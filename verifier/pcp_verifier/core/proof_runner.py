@@ -12,7 +12,10 @@ user's original repo (nothing reaches disk before a hunk is accepted).
 from __future__ import annotations
 
 import asyncio
+import functools
 import os
+import subprocess
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -67,25 +70,54 @@ def _timeout() -> float:
     return float(os.environ.get("PCP_TEST_TIMEOUT_S", "120"))
 
 
-def _pytest_args(sb: LocalTempSandbox, selection: list[str]) -> list[str]:
+COVERAGE_DATA = ".coverage-pcp"
+COVERAGE_JSON = "cov.json"
+
+
+@functools.cache
+def _has_coverage(python: str) -> bool:
+    try:
+        r = subprocess.run([python, "-c", "import coverage"], capture_output=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return r.returncode == 0
+
+
+def _pytest_args(
+    sb: LocalTempSandbox, selection: list[str], cover: list[str] | None = None
+) -> list[str]:
     junit = sb.base / "junit.xml"
     args = [
         "-m", "pytest", "-q", "-rfE", "--tb=short", "-p", "no:cacheprovider",
         "-o", "junit_family=xunit1", f"--junitxml={junit}", f"--rootdir={sb.work}",
     ]  # fmt: skip
-    import sys
-
     if sb.python == sys.executable:
         args += ["-p", "no:asyncio"]  # our own dev plugin must not leak into the target repo
+    if cover:
+        include = ",".join(str(sb.work / c) for c in cover)
+        args = ["-m", "coverage", "run", f"--data-file={sb.base / COVERAGE_DATA}",
+                f"--include={include}", *args]  # fmt: skip
     extra = os.environ.get("PCP_PYTEST_ARGS", "").split()
     return sb.python_cmd(*args, *extra, *selection)
 
 
-def _run_tests(sb: LocalTempSandbox, selection: list[str]) -> RunResult:
+def _run_tests(
+    sb: LocalTempSandbox, selection: list[str], cover: list[str] | None = None
+) -> RunResult:
     present = [s for s in selection if (sb.work / s).exists()]
     if selection and not present:
         present = []  # everything selected was deleted: run the default suite instead
-    res = sb.exec(_pytest_args(sb, present), timeout=_timeout())
+    cover = [c for c in (cover or []) if (sb.work / c).is_file()]
+    if cover and not (os.environ.get("PCP_COVERAGE", "1") == "1" and _has_coverage(sb.python)):
+        cover = []
+    res = sb.exec(_pytest_args(sb, present, cover), timeout=_timeout())
+    if cover and not res.timed_out:
+        # coverage.json for the coverage checker, produced by the same proof run
+        sb.exec(
+            sb.python_cmd("-m", "coverage", "json", f"--data-file={sb.base / COVERAGE_DATA}",
+                          "-o", str(sb.base / COVERAGE_JSON)),
+            timeout=30,
+        )  # fmt: skip
     tests = parse_junit(sb.base / "junit.xml")
     counts = {
         k: sum(1 for o in tests.values() if o == k)
@@ -236,7 +268,12 @@ async def run_proof(
         emit("Running baseline (old code + new tests) and patched tests", {"f2p": len(f2p)})
         baseline, patched = await asyncio.gather(
             asyncio.to_thread(_run_tests, base_sb, selection),
-            asyncio.to_thread(_run_tests, patched_sb, selection),
+            asyncio.to_thread(
+                _run_tests,
+                patched_sb,
+                selection,
+                [f.path for f in parsed.source_files if f.path.endswith(".py")],
+            ),  # fmt: skip
         )
 
         f2p_ok, p2p_ok, regressions = classify(f2p, baseline, patched)
