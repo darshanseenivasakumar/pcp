@@ -46,7 +46,8 @@ CONFIG_WORDS = {
         "pin",
     },
     "ci": {"ci", "workflow", "workflows", "pipeline", "github", "actions"},
-    "config": {"pyproject", "packaging", "config", "configuration", "entry", "setup", "tox"},
+    # packaging config only: "config"/"configuration" usually means the *app's* config
+    "config": {"pyproject", "packaging", "setup", "tox", "build", "dependency", "dependencies"},
 }
 DOC_RE = re.compile(r"(^|/)(docs?/|CHANGES|CHANGELOG|HISTORY|README)|\.(rst|md)$", re.I)
 DOC_WORDS = {"doc", "docs", "documentation", "documented", "document", "changelog", "readme"}

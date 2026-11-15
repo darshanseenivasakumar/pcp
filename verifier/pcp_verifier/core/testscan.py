@@ -26,7 +26,8 @@ class TestFingerprint:
     test_id: str  # "tests/test_x.py::TestCls::test_y" (no parametrize suffix)
     asserts: int
     skipped: bool
-    body_hash: str
+    body_hash: str  # body + decorators: adding parametrize cases counts as a change
+    params: int = -1  # literal parametrize cases (product over decorators); -1 = unknown
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -92,8 +93,25 @@ def _count_asserts(fn: ast.AST) -> int:
 
 
 def _body_hash(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
-    dump = "\n".join(ast.dump(stmt) for stmt in fn.body)
-    return hashlib.sha1(dump.encode()).hexdigest()[:16]
+    parts = [ast.dump(d) for d in fn.decorator_list] + [ast.dump(stmt) for stmt in fn.body]
+    return hashlib.sha1("\n".join(parts).encode()).hexdigest()[:16]
+
+
+def _param_count(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
+    """Number of literal parametrize cases, so silently dropped cases are caught."""
+    total, seen = 1, False
+    for dec in fn.decorator_list:
+        if (
+            isinstance(dec, ast.Call)
+            and isinstance(dec.func, ast.Attribute)
+            and dec.func.attr == "parametrize"
+        ):
+            values = dec.args[1] if len(dec.args) > 1 else None
+            if not isinstance(values, ast.List | ast.Tuple):
+                return -1
+            total *= len(values.elts)
+            seen = True
+    return total if seen else 1
 
 
 def _module_skipped(tree: ast.Module) -> bool:
@@ -121,7 +139,9 @@ def scan_source(source: str, rel_path: str) -> dict[str, TestFingerprint]:
             or any(_is_skip_decorator(d) for d in fn.decorator_list)
             or _calls_skip(fn)
         )
-        out[tid] = TestFingerprint(tid, _count_asserts(fn), skipped, _body_hash(fn))
+        out[tid] = TestFingerprint(
+            tid, _count_asserts(fn), skipped, _body_hash(fn), _param_count(fn)
+        )
 
     for stmt in tree.body:
         if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef) and stmt.name.startswith(
@@ -201,6 +221,14 @@ def detect_tampering(
         elif tid in runtime_skips and not fp.skipped:
             events.append(
                 TamperEvent(test_id=tid, kind="skipped", detail="test is skipped at run time")
+            )
+        elif 0 <= new.params < fp.params:
+            events.append(
+                TamperEvent(
+                    test_id=tid,
+                    kind="deleted",
+                    detail=f"parametrized cases removed ({fp.params} -> {new.params})",
+                )
             )
         elif new.asserts < fp.asserts:
             events.append(

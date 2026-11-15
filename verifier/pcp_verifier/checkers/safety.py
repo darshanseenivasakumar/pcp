@@ -29,7 +29,7 @@ def _heuristics(ctx: PatchContext, r: ResultBuilder) -> bool:
     for fc in parsed(ctx).files:
         is_py = fc.path.endswith(".py")
         for line_no, text in fc.added:
-            for rule, m in scan_line(text, is_py):
+            for rule, m in scan_line(text, is_py, fc.is_test):
                 is_secret = rule.kind == "secret"
                 found_secret |= is_secret
                 evidence = text.replace(m.group(0), mask(m.group(0))) if is_secret else text.strip()

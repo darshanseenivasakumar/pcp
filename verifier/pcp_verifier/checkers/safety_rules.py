@@ -14,6 +14,7 @@ class Rule:
     modifier: int
     message: str
     python_only: bool = False
+    skip_tests: bool = False  # dummy fixture values in tests are not leaks
 
 
 def _r(p: str, flags: int = 0) -> re.Pattern:
@@ -29,7 +30,8 @@ RULES: list[Rule] = [
     Rule("github_token", "secret", _r(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,}\b|\bgithub_pat_[A-Za-z0-9_]{50,}\b"), SECRET_MODIFIER, "GitHub token"),
     Rule("openai_style_key", "secret", _r(r"\bsk-(?:proj-|ant-)?[A-Za-z0-9_\-]{20,}"), SECRET_MODIFIER, "API secret key (sk-...)"),
     Rule("slack_token", "secret", _r(r"\bxox[abprs]-[A-Za-z0-9-]{10,}"), SECRET_MODIFIER, "Slack token"),
-    Rule("hardcoded_password", "secret", _r(r"""(?i)\b(?:password|passwd|pwd|secret_key|api_key)\s*[:=]\s*["'][^"'\s]{4,}["']"""), SECRET_MODIFIER, "Hard-coded password or secret"),
+    # masked placeholders like '********' are not secrets; dummy values in tests are skipped
+    Rule("hardcoded_password", "secret", _r(r"""(?i)\b(?:password|passwd|pwd|secret_key|api_key)\s*[:=]\s*["'](?![*x.]+["'])[^"'\s]{4,}["']"""), SECRET_MODIFIER, "Hard-coded password or secret", skip_tests=True),
     Rule("bearer_token", "secret", _r(r"(?i)\bBearer\s+[A-Za-z0-9._\-]{20,}"), SECRET_MODIFIER, "Hard-coded bearer token"),
     # ---- dangerous calls: warning
     Rule("eval", "dangerous_call", _r(r"(?<![\w.])eval\s*\("), 60, "eval() runs arbitrary code", python_only=True),
@@ -47,10 +49,10 @@ RULES: list[Rule] = [
 GUARD_START = re.compile(r"^\s*(?:try\s*:|except\b.*:|finally\s*:)")
 
 
-def scan_line(text: str, is_python: bool) -> list[tuple[Rule, re.Match]]:
+def scan_line(text: str, is_python: bool, is_test: bool = False) -> list[tuple[Rule, re.Match]]:
     hits = []
     for rule in RULES:
-        if rule.python_only and not is_python:
+        if (rule.python_only and not is_python) or (rule.skip_tests and is_test):
             continue
         m = rule.pattern.search(text)
         if m:

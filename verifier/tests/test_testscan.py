@@ -80,6 +80,27 @@ def test_detect_rename():
     assert detect_tampering(fps(BASE), fps(after))[0].kind == "renamed"
 
 
+PARAM = """
+import pytest
+
+@pytest.mark.parametrize(("v", "out"), [("0", False), ("no", False), ("off", False)])
+def test_p(v, out):
+    assert f(v) == out
+"""
+
+
+def test_added_parametrize_case_counts_as_changed():
+    more = PARAM.replace('("off", False)]', '("off", False), ("n", False)]')
+    assert new_or_changed(fps(PARAM), fps(more)) == ["tests/test_x.py::test_p"]
+    assert fps(more)["tests/test_x.py::test_p"].params == 4
+
+
+def test_removed_parametrize_case_is_tampering():
+    fewer = PARAM.replace(', ("off", False)]', "]")
+    ev = detect_tampering(fps(PARAM), fps(fewer))
+    assert [(e.kind, e.detail) for e in ev] == [("deleted", "parametrized cases removed (3 -> 2)")]
+
+
 def test_strengthening_is_fine():
     after = BASE.replace("    assert 2 == 2\n", "    assert 2 == 2\n    assert 3 == 3\n")
     assert detect_tampering(fps(BASE), fps(after)) == []

@@ -68,6 +68,16 @@ def test_python_only_rules_skip_other_files():
     assert scan_line("eval(x)", is_python=False) == []
 
 
+def test_masked_placeholder_is_not_a_secret():
+    assert scan_line("SECRET_KEY = '********'", is_python=False) == []
+
+
+def test_dummy_password_in_tests_is_skipped_but_real_keys_are_not():
+    assert scan_line('app.config.update(SECRET_KEY="dev-secret")', True, is_test=True) == []
+    assert scan_line('app.config.update(SECRET_KEY="dev-secret")', True, is_test=False)
+    assert scan_line(f'KEY = "{AWS}"', True, is_test=True)
+
+
 def _ctx(diff: str) -> PatchContext:
     return PatchContext(
         patch_id="p",

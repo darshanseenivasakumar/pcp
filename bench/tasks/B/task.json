@@ -1,0 +1,3 @@
+{
+  "task": "Add a `flask config` CLI command that shows the app's configuration and masks secret values, with a test and docs."
+}
