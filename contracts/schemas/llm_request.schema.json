@@ -1,0 +1,65 @@
+{
+  "$defs": {
+    "LLMMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "system",
+            "user",
+            "assistant"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "content"
+      ],
+      "title": "LLMMessage",
+      "type": "object"
+    }
+  },
+  "$id": "pcp/llm_request.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "max_tokens": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Tokens"
+    },
+    "messages": {
+      "items": {
+        "$ref": "#/$defs/LLMMessage"
+      },
+      "minItems": 1,
+      "title": "Messages",
+      "type": "array"
+    },
+    "purpose": {
+      "title": "Purpose",
+      "type": "string"
+    }
+  },
+  "required": [
+    "messages",
+    "purpose"
+  ],
+  "title": "LLMRequest",
+  "type": "object",
+  "x-contracts-version": "0.1.0"
+}

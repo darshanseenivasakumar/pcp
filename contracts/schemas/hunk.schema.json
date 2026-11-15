@@ -1,0 +1,46 @@
+{
+  "$id": "pcp/hunk.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "file": {
+      "title": "File",
+      "type": "string"
+    },
+    "hunk_id": {
+      "title": "Hunk Id",
+      "type": "string"
+    },
+    "new_lines": {
+      "minimum": 0,
+      "title": "New Lines",
+      "type": "integer"
+    },
+    "new_start": {
+      "minimum": 0,
+      "title": "New Start",
+      "type": "integer"
+    },
+    "old_lines": {
+      "minimum": 0,
+      "title": "Old Lines",
+      "type": "integer"
+    },
+    "old_start": {
+      "minimum": 0,
+      "title": "Old Start",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "hunk_id",
+    "file",
+    "old_start",
+    "old_lines",
+    "new_start",
+    "new_lines"
+  ],
+  "title": "Hunk",
+  "type": "object",
+  "x-contracts-version": "0.1.0"
+}

@@ -1,0 +1,114 @@
+{
+  "patch_id": "c0de5e11-9b3a-4f2d-8e7c-1a2b3c4d5e6f",
+  "score": 80,
+  "decision": "REVIEW",
+  "decision_reason": "score 80 >= 70 but no new test proves the change",
+  "unproven": true,
+  "attempt": 1,
+  "score_history": [
+    80
+  ],
+  "checks": [
+    {
+      "checker": "proof",
+      "risk_modifier": 40,
+      "status": "warning",
+      "findings": [
+        {
+          "id": "f1",
+          "type": "missing_test",
+          "source": "heuristic",
+          "confidence": 0.8,
+          "file": "src/flask/helpers.py",
+          "line_start": 30,
+          "line_end": 30,
+          "evidence": "return bool(val and val.lower() not in {\"0\", \"false\", \"no\", \"off\", \"n\"})",
+          "message": "Behaviour changed but no fail-to-pass test was added.",
+          "validated": "not_required"
+        }
+      ],
+      "recommended_action": "Add a test."
+    },
+    {
+      "checker": "safety",
+      "risk_modifier": 0,
+      "status": "pass",
+      "findings": [],
+      "recommended_action": "none"
+    },
+    {
+      "checker": "coverage",
+      "risk_modifier": 30,
+      "status": "warning",
+      "findings": [],
+      "recommended_action": "Add a test."
+    },
+    {
+      "checker": "scope",
+      "risk_modifier": 0,
+      "status": "pass",
+      "findings": [],
+      "recommended_action": "none"
+    }
+  ],
+  "proof": {
+    "attempt": 1,
+    "sandbox": "local-temp",
+    "frozen_manifest": {
+      "f2p": [],
+      "p2p": [
+        "tests/test_helpers.py"
+      ]
+    },
+    "baseline": {
+      "exit_code": 1,
+      "passed": 58,
+      "failed": 4,
+      "skipped": 0,
+      "errors": 0,
+      "duration_s": 3.2,
+      "tests": {
+        "tests/test_helpers.py::test_debug_flag_off_values[off]": "failed",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]": "failed",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]": "failed",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]": "failed"
+      },
+      "output_tail": "FAILED tests/test_helpers.py::test_debug_flag_off_values[off] - assert not True"
+    },
+    "patched": {
+      "exit_code": 0,
+      "passed": 62,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "duration_s": 3.4,
+      "tests": {
+        "tests/test_helpers.py::test_debug_flag_off_values[off]": "passed",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]": "passed",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]": "passed",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]": "passed"
+      },
+      "output_tail": ""
+    },
+    "f2p_ok": false,
+    "p2p_ok": true,
+    "tampering": [],
+    "apply_ok": true,
+    "error": null
+  },
+  "hunk_evidence": {
+    "h1": {
+      "tests": [
+        "tests/test_helpers.py"
+      ],
+      "result": "pass",
+      "findings": [
+        "f1"
+      ]
+    }
+  },
+  "repair_instructions": null,
+  "summary_md": "**Score 80: unproven.** Existing tests pass, but nothing tests the new behaviour.",
+  "big_rewrite_approved": false,
+  "created_at": "2026-11-16T10:15:30Z"
+}

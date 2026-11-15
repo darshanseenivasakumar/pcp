@@ -1,0 +1,15 @@
+{
+  "exit_code": 0,
+  "passed": 62,
+  "failed": 0,
+  "skipped": 0,
+  "errors": 0,
+  "duration_s": 3.4,
+  "tests": {
+    "tests/test_helpers.py::test_debug_flag_off_values[off]": "passed",
+    "tests/test_helpers.py::test_debug_flag_off_values[n]": "passed",
+    "tests/test_helpers.py::test_debug_flag_off_values[OFF]": "passed",
+    "tests/test_helpers.py::test_debug_flag_off_values[N]": "passed"
+  },
+  "output_tail": ""
+}

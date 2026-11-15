@@ -1,0 +1,53 @@
+{
+  "$id": "pcp/verify_request.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "approve_big_rewrite": {
+      "default": false,
+      "title": "Approve Big Rewrite",
+      "type": "boolean"
+    },
+    "attempt": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "diff": {
+      "minLength": 1,
+      "title": "Diff",
+      "type": "string"
+    },
+    "previous_patch_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previous Patch Id"
+    },
+    "repo_root": {
+      "minLength": 1,
+      "title": "Repo Root",
+      "type": "string"
+    },
+    "task": {
+      "minLength": 1,
+      "title": "Task",
+      "type": "string"
+    }
+  },
+  "required": [
+    "task",
+    "repo_root",
+    "diff"
+  ],
+  "title": "VerifyRequest",
+  "type": "object",
+  "x-contracts-version": "0.1.0"
+}

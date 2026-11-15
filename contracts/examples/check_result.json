@@ -1,0 +1,20 @@
+{
+  "checker": "coverage",
+  "risk_modifier": 40,
+  "status": "warning",
+  "findings": [
+    {
+      "id": "f3",
+      "type": "missing_test",
+      "source": "heuristic",
+      "confidence": 0.6,
+      "file": "src/flask/helpers.py",
+      "line_start": 30,
+      "line_end": 30,
+      "evidence": "return bool(val and val.lower() not in {\"0\", \"false\", \"no\", \"off\", \"n\"})",
+      "message": "Mixed-case values like 'Off' are not tested.",
+      "validated": "not_required"
+    }
+  ],
+  "recommended_action": "Consider a test for mixed case."
+}

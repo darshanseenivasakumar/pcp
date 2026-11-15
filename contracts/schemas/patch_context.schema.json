@@ -1,0 +1,313 @@
+{
+  "$defs": {
+    "FrozenManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "f2p": {
+          "items": {
+            "type": "string"
+          },
+          "title": "F2P",
+          "type": "array"
+        },
+        "p2p": {
+          "items": {
+            "type": "string"
+          },
+          "title": "P2P",
+          "type": "array"
+        }
+      },
+      "title": "FrozenManifest",
+      "type": "object"
+    },
+    "Hunk": {
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "title": "File",
+          "type": "string"
+        },
+        "hunk_id": {
+          "title": "Hunk Id",
+          "type": "string"
+        },
+        "new_lines": {
+          "minimum": 0,
+          "title": "New Lines",
+          "type": "integer"
+        },
+        "new_start": {
+          "minimum": 0,
+          "title": "New Start",
+          "type": "integer"
+        },
+        "old_lines": {
+          "minimum": 0,
+          "title": "Old Lines",
+          "type": "integer"
+        },
+        "old_start": {
+          "minimum": 0,
+          "title": "Old Start",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "hunk_id",
+        "file",
+        "old_start",
+        "old_lines",
+        "new_start",
+        "new_lines"
+      ],
+      "title": "Hunk",
+      "type": "object"
+    },
+    "Proof": {
+      "additionalProperties": false,
+      "properties": {
+        "apply_ok": {
+          "default": true,
+          "title": "Apply Ok",
+          "type": "boolean"
+        },
+        "attempt": {
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "baseline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "f2p_ok": {
+          "title": "F2P Ok",
+          "type": "boolean"
+        },
+        "frozen_manifest": {
+          "$ref": "#/$defs/FrozenManifest"
+        },
+        "p2p_ok": {
+          "title": "P2P Ok",
+          "type": "boolean"
+        },
+        "patched": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sandbox": {
+          "title": "Sandbox",
+          "type": "string"
+        },
+        "tampering": {
+          "items": {
+            "$ref": "#/$defs/TamperEvent"
+          },
+          "title": "Tampering",
+          "type": "array"
+        }
+      },
+      "required": [
+        "attempt",
+        "sandbox",
+        "frozen_manifest",
+        "f2p_ok",
+        "p2p_ok"
+      ],
+      "title": "Proof",
+      "type": "object"
+    },
+    "RunResult": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_s": {
+          "minimum": 0,
+          "title": "Duration S",
+          "type": "number"
+        },
+        "errors": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Errors",
+          "type": "integer"
+        },
+        "exit_code": {
+          "title": "Exit Code",
+          "type": "integer"
+        },
+        "failed": {
+          "minimum": 0,
+          "title": "Failed",
+          "type": "integer"
+        },
+        "output_tail": {
+          "default": "",
+          "title": "Output Tail",
+          "type": "string"
+        },
+        "passed": {
+          "minimum": 0,
+          "title": "Passed",
+          "type": "integer"
+        },
+        "skipped": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Skipped",
+          "type": "integer"
+        },
+        "tests": {
+          "additionalProperties": {
+            "enum": [
+              "passed",
+              "failed",
+              "skipped",
+              "error"
+            ],
+            "type": "string"
+          },
+          "title": "Tests",
+          "type": "object"
+        }
+      },
+      "required": [
+        "exit_code",
+        "passed",
+        "failed",
+        "duration_s"
+      ],
+      "title": "RunResult",
+      "type": "object"
+    },
+    "TamperEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "deleted",
+            "skipped",
+            "weakened_assert",
+            "renamed"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "test_id": {
+          "title": "Test Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "test_id",
+        "kind",
+        "detail"
+      ],
+      "title": "TamperEvent",
+      "type": "object"
+    }
+  },
+  "$id": "pcp/patch_context.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "approve_big_rewrite": {
+      "default": false,
+      "title": "Approve Big Rewrite",
+      "type": "boolean"
+    },
+    "attempt": {
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "changed_files": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Changed Files",
+      "type": "array"
+    },
+    "diff": {
+      "title": "Diff",
+      "type": "string"
+    },
+    "hunks": {
+      "items": {
+        "$ref": "#/$defs/Hunk"
+      },
+      "title": "Hunks",
+      "type": "array"
+    },
+    "patch_id": {
+      "title": "Patch Id",
+      "type": "string"
+    },
+    "proof": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Proof"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "repo_root": {
+      "title": "Repo Root",
+      "type": "string"
+    },
+    "shadow_root": {
+      "title": "Shadow Root",
+      "type": "string"
+    },
+    "task": {
+      "title": "Task",
+      "type": "string"
+    }
+  },
+  "required": [
+    "patch_id",
+    "attempt",
+    "task",
+    "repo_root",
+    "shadow_root",
+    "diff",
+    "changed_files",
+    "hunks"
+  ],
+  "title": "PatchContext",
+  "type": "object",
+  "x-contracts-version": "0.1.0"
+}

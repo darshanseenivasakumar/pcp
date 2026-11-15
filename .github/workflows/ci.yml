@@ -1,0 +1,37 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: verifier/pyproject.toml
+      - run: pip install -e "./verifier[dev]"
+      - name: contracts schemas up to date
+        run: python contracts/gen_schemas.py --check
+      - run: ruff check verifier contracts bench
+      - run: ruff format --check verifier contracts bench
+      - run: pytest verifier -q
+
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: detect extension
+        id: ext
+        run: echo "present=$([ -f extension/package.json ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        if: steps.ext.outputs.present == 'yes'
+        with:
+          node-version: "20"
+      - if: steps.ext.outputs.present == 'yes'
+        working-directory: extension
+        run: npm ci && npm run lint --if-present && npm test --if-present

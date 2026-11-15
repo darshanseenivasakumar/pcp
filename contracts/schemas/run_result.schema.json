@@ -1,0 +1,65 @@
+{
+  "$id": "pcp/run_result.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "duration_s": {
+      "minimum": 0,
+      "title": "Duration S",
+      "type": "number"
+    },
+    "errors": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Errors",
+      "type": "integer"
+    },
+    "exit_code": {
+      "title": "Exit Code",
+      "type": "integer"
+    },
+    "failed": {
+      "minimum": 0,
+      "title": "Failed",
+      "type": "integer"
+    },
+    "output_tail": {
+      "default": "",
+      "title": "Output Tail",
+      "type": "string"
+    },
+    "passed": {
+      "minimum": 0,
+      "title": "Passed",
+      "type": "integer"
+    },
+    "skipped": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Skipped",
+      "type": "integer"
+    },
+    "tests": {
+      "additionalProperties": {
+        "enum": [
+          "passed",
+          "failed",
+          "skipped",
+          "error"
+        ],
+        "type": "string"
+      },
+      "title": "Tests",
+      "type": "object"
+    }
+  },
+  "required": [
+    "exit_code",
+    "passed",
+    "failed",
+    "duration_s"
+  ],
+  "title": "RunResult",
+  "type": "object",
+  "x-contracts-version": "0.1.0"
+}

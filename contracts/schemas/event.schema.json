@@ -1,0 +1,48 @@
+{
+  "$id": "pcp/event.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "data": {
+      "additionalProperties": true,
+      "title": "Data",
+      "type": "object"
+    },
+    "message": {
+      "title": "Message",
+      "type": "string"
+    },
+    "patch_id": {
+      "title": "Patch Id",
+      "type": "string"
+    },
+    "stage": {
+      "enum": [
+        "proof",
+        "checks",
+        "validate",
+        "verdict"
+      ],
+      "title": "Stage",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "started",
+        "done",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "patch_id",
+    "stage",
+    "status",
+    "message"
+  ],
+  "title": "Event",
+  "type": "object",
+  "x-contracts-version": "0.1.0"
+}

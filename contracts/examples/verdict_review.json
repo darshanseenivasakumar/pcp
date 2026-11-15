@@ -1,0 +1,148 @@
+{
+  "patch_id": "3f2b8c1e-6d1a-4c7e-9a52-0b7d1f4e8a10",
+  "score": 85,
+  "decision": "REVIEW",
+  "decision_reason": "score 85 >= 70 and the proof passed",
+  "unproven": false,
+  "attempt": 2,
+  "score_history": [
+    45,
+    85
+  ],
+  "checks": [
+    {
+      "checker": "proof",
+      "risk_modifier": 0,
+      "status": "pass",
+      "findings": [],
+      "recommended_action": "none"
+    },
+    {
+      "checker": "safety",
+      "risk_modifier": 0,
+      "status": "pass",
+      "findings": [],
+      "recommended_action": "none"
+    },
+    {
+      "checker": "coverage",
+      "risk_modifier": 40,
+      "status": "warning",
+      "findings": [
+        {
+          "id": "f3",
+          "type": "missing_test",
+          "source": "heuristic",
+          "confidence": 0.6,
+          "file": "src/flask/helpers.py",
+          "line_start": 30,
+          "line_end": 30,
+          "evidence": "return bool(val and val.lower() not in {\"0\", \"false\", \"no\", \"off\", \"n\"})",
+          "message": "Mixed-case values like 'Off' are not tested.",
+          "validated": "not_required"
+        }
+      ],
+      "recommended_action": "Consider a test for mixed case."
+    },
+    {
+      "checker": "scope",
+      "risk_modifier": 35,
+      "status": "warning",
+      "findings": [
+        {
+          "id": "f4",
+          "type": "out_of_scope",
+          "source": "heuristic",
+          "confidence": 0.5,
+          "file": "tests/test_helpers.py",
+          "line_start": 303,
+          "line_end": 308,
+          "evidence": "def test_debug_flag_off_values",
+          "message": "Test added at module level instead of inside TestHelpers.",
+          "validated": "not_required"
+        }
+      ],
+      "recommended_action": "Optional: move the test into TestHelpers."
+    }
+  ],
+  "proof": {
+    "attempt": 2,
+    "sandbox": "local-temp",
+    "frozen_manifest": {
+      "f2p": [
+        "tests/test_helpers.py::test_debug_flag_off_values[off]",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]"
+      ],
+      "p2p": [
+        "tests/test_helpers.py"
+      ]
+    },
+    "baseline": {
+      "exit_code": 1,
+      "passed": 58,
+      "failed": 4,
+      "skipped": 0,
+      "errors": 0,
+      "duration_s": 3.2,
+      "tests": {
+        "tests/test_helpers.py::test_debug_flag_off_values[off]": "failed",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]": "failed",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]": "failed",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]": "failed"
+      },
+      "output_tail": "FAILED tests/test_helpers.py::test_debug_flag_off_values[off] - assert not True"
+    },
+    "patched": {
+      "exit_code": 0,
+      "passed": 62,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "duration_s": 3.4,
+      "tests": {
+        "tests/test_helpers.py::test_debug_flag_off_values[off]": "passed",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]": "passed",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]": "passed",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]": "passed"
+      },
+      "output_tail": ""
+    },
+    "f2p_ok": true,
+    "p2p_ok": true,
+    "tampering": [],
+    "apply_ok": true,
+    "error": null
+  },
+  "hunk_evidence": {
+    "h1": {
+      "tests": [
+        "tests/test_helpers.py::test_debug_flag_off_values[off]",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]"
+      ],
+      "result": "pass",
+      "findings": [
+        "f3"
+      ]
+    },
+    "h2": {
+      "tests": [
+        "tests/test_helpers.py::test_debug_flag_off_values[off]",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]"
+      ],
+      "result": "pass",
+      "findings": [
+        "f4"
+      ]
+    }
+  },
+  "repair_instructions": null,
+  "summary_md": "**Score 85: ready for review.** 4 new tests fail on the old code and pass on the new code; 58 existing tests still pass.\n\n- coverage: mixed-case values not tested\n- scope: test added outside TestHelpers",
+  "big_rewrite_approved": false,
+  "created_at": "2026-11-16T10:15:30Z"
+}

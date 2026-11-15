@@ -1,0 +1,10 @@
+{
+  "text": "{\"verdict\": \"confirm\", \"confidence\": 0.92}",
+  "model_used": "secondary:gpt-4o-mini",
+  "failover_ms": 1840,
+  "failed_over": true,
+  "errors": [
+    "primary: HTTP 503 Service Unavailable",
+    "primary retry: timeout after 20s"
+  ]
+}

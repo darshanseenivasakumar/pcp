@@ -1,0 +1,12 @@
+diff --git a/src/tiny/mathx.py b/src/tiny/mathx.py
+index 5e57575..84fcf70 100644
+--- a/src/tiny/mathx.py
++++ b/src/tiny/mathx.py
+@@ -1,6 +1,6 @@
+ """Three small functions used as PCP's test fixture."""
+ 
+-TRUE_VALUES = {"1", "true", "yes"}
++TRUE_VALUES = {"1", "true", "yes", "on"}
+ 
+ 
+ def clamp(x: float, lo: float, hi: float) -> float:

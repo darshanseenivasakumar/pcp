@@ -1,0 +1,109 @@
+{
+  "$id": "pcp/finding.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "evidence": {
+      "default": "",
+      "title": "Evidence",
+      "type": "string"
+    },
+    "file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "File"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "line_end": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Line End"
+    },
+    "line_start": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Line Start"
+    },
+    "message": {
+      "title": "Message",
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "heuristic",
+        "tool",
+        "test_output",
+        "llm"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "type": {
+      "enum": [
+        "test_failure",
+        "missing_test",
+        "tampering",
+        "secret",
+        "dangerous_call",
+        "removed_guard",
+        "out_of_scope",
+        "big_rewrite",
+        "other"
+      ],
+      "title": "Type",
+      "type": "string"
+    },
+    "validated": {
+      "default": "not_required",
+      "enum": [
+        "confirmed",
+        "dismissed",
+        "not_required"
+      ],
+      "title": "Validated",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "source",
+    "confidence",
+    "message"
+  ],
+  "title": "Finding",
+  "type": "object",
+  "x-contracts-version": "0.1.0"
+}

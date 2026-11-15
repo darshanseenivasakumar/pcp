@@ -1,0 +1,28 @@
+{
+  "$id": "pcp/health.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "sandbox": {
+      "title": "Sandbox",
+      "type": "string"
+    },
+    "status": {
+      "const": "ok",
+      "title": "Status",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "status",
+    "version",
+    "sandbox"
+  ],
+  "title": "Health",
+  "type": "object",
+  "x-contracts-version": "0.1.0"
+}

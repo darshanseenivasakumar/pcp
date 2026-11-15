@@ -1,0 +1,26 @@
+diff --git a/src/tiny/mathx.py b/src/tiny/mathx.py
+index 5e57575..11d0dc2 100644
+--- a/src/tiny/mathx.py
++++ b/src/tiny/mathx.py
+@@ -14,6 +14,8 @@ def parse_bool(value: str | None) -> bool:
+     """Interpret a config string as a boolean."""
+     if value is None:
+         return False
++    if value.strip() == "on":
++        return True
+     return value.strip().lower() in TRUE_VALUES
+ 
+ 
+diff --git a/tests/test_mathx.py b/tests/test_mathx.py
+index abd479c..a7bf321 100644
+--- a/tests/test_mathx.py
++++ b/tests/test_mathx.py
+@@ -31,3 +31,8 @@ def test_safe_div():
+     assert safe_div(6, 3) == 2
+     assert safe_div(1, 0) == 0.0
+     assert safe_div(1, 0, default=-1) == -1
++
++
++@pytest.mark.parametrize("value", ["on", "ON", " On "])
++def test_parse_bool_on(value):
++    assert parse_bool(value) is True

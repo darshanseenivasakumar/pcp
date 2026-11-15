@@ -1,0 +1,20 @@
+{
+  "checker": "coverage",
+  "risk_modifier": 50,
+  "status": "warning",
+  "findings": [
+    {
+      "id": "f9",
+      "type": "other",
+      "source": "tool",
+      "confidence": 1.0,
+      "file": null,
+      "line_start": null,
+      "line_end": null,
+      "evidence": "",
+      "message": "coverage checker timed out after 30s; using fallback result",
+      "validated": "not_required"
+    }
+  ],
+  "recommended_action": "Re-run the coverage checker."
+}

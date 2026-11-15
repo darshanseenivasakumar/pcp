@@ -1,0 +1,81 @@
+{
+  "patch_id": "3f2b8c1e-6d1a-4c7e-9a52-0b7d1f4e8a10",
+  "attempt": 1,
+  "task": "Make get_debug_flag also treat \"off\" and \"n\" as false.",
+  "repo_root": "C:/work/flask",
+  "shadow_root": "C:/Users/dev/AppData/Local/Temp/pcp-3f2b8c1e/patched",
+  "diff": "diff --git a/src/flask/helpers.py b/src/flask/helpers.py\n--- a/src/flask/helpers.py\n+++ b/src/flask/helpers.py\n@@ -27,7 +27,7 @@ def get_debug_flag() -> bool:\n     :envvar:`FLASK_DEBUG` environment variable. The default is ``False``.\n     \"\"\"\n     val = os.environ.get(\"FLASK_DEBUG\")\n-    return bool(val and val.lower() not in {\"0\", \"false\", \"no\"})\n+    return bool(val and val.lower() not in {\"0\", \"false\", \"no\", \"off\", \"n\"})\n\n\n def get_load_dotenv(default: bool = True) -> bool:\ndiff --git a/tests/test_helpers.py b/tests/test_helpers.py\n--- a/tests/test_helpers.py\n+++ b/tests/test_helpers.py\n@@ -300,3 +300,9 @@ class TestHelpers:\n         assert not flask.helpers.get_debug_flag()\n+\n+\n+@pytest.mark.parametrize(\"value\", [\"off\", \"n\", \"OFF\", \"N\"])\n+def test_debug_flag_off_values(monkeypatch, value):\n+    monkeypatch.setenv(\"FLASK_DEBUG\", value)\n+    assert not flask.helpers.get_debug_flag()\n",
+  "changed_files": [
+    "src/flask/helpers.py",
+    "tests/test_helpers.py"
+  ],
+  "hunks": [
+    {
+      "hunk_id": "h1",
+      "file": "src/flask/helpers.py",
+      "old_start": 27,
+      "old_lines": 7,
+      "new_start": 27,
+      "new_lines": 7
+    },
+    {
+      "hunk_id": "h2",
+      "file": "tests/test_helpers.py",
+      "old_start": 300,
+      "old_lines": 3,
+      "new_start": 300,
+      "new_lines": 9
+    }
+  ],
+  "proof": {
+    "attempt": 1,
+    "sandbox": "local-temp",
+    "frozen_manifest": {
+      "f2p": [
+        "tests/test_helpers.py::test_debug_flag_off_values[off]",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]"
+      ],
+      "p2p": [
+        "tests/test_helpers.py"
+      ]
+    },
+    "baseline": {
+      "exit_code": 1,
+      "passed": 58,
+      "failed": 4,
+      "skipped": 0,
+      "errors": 0,
+      "duration_s": 3.2,
+      "tests": {
+        "tests/test_helpers.py::test_debug_flag_off_values[off]": "failed",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]": "failed",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]": "failed",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]": "failed"
+      },
+      "output_tail": "FAILED tests/test_helpers.py::test_debug_flag_off_values[off] - assert not True"
+    },
+    "patched": {
+      "exit_code": 0,
+      "passed": 62,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "duration_s": 3.4,
+      "tests": {
+        "tests/test_helpers.py::test_debug_flag_off_values[off]": "passed",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]": "passed",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]": "passed",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]": "passed"
+      },
+      "output_tail": ""
+    },
+    "f2p_ok": true,
+    "p2p_ok": true,
+    "tampering": [],
+    "apply_ok": true,
+    "error": null
+  },
+  "approve_big_rewrite": false
+}

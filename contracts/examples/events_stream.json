@@ -1,0 +1,90 @@
+[
+  {
+    "patch_id": "3f2b8c1e-6d1a-4c7e-9a52-0b7d1f4e8a10",
+    "stage": "proof",
+    "status": "started",
+    "message": "Copying repo to a shadow folder",
+    "data": {
+      "sandbox": "local-temp"
+    }
+  },
+  {
+    "patch_id": "3f2b8c1e-6d1a-4c7e-9a52-0b7d1f4e8a10",
+    "stage": "proof",
+    "status": "started",
+    "message": "Running baseline tests (old code + new tests)",
+    "data": {
+      "phase": "baseline"
+    }
+  },
+  {
+    "patch_id": "3f2b8c1e-6d1a-4c7e-9a52-0b7d1f4e8a10",
+    "stage": "proof",
+    "status": "started",
+    "message": "Running patched tests",
+    "data": {
+      "phase": "patched"
+    }
+  },
+  {
+    "patch_id": "3f2b8c1e-6d1a-4c7e-9a52-0b7d1f4e8a10",
+    "stage": "proof",
+    "status": "done",
+    "message": "F2P 4/4 fail->pass, P2P 58/58 still pass",
+    "data": {
+      "f2p_ok": true,
+      "p2p_ok": true
+    }
+  },
+  {
+    "patch_id": "3f2b8c1e-6d1a-4c7e-9a52-0b7d1f4e8a10",
+    "stage": "checks",
+    "status": "started",
+    "message": "Running 4 checkers",
+    "data": {
+      "checkers": [
+        "proof",
+        "safety",
+        "coverage",
+        "scope"
+      ]
+    }
+  },
+  {
+    "patch_id": "3f2b8c1e-6d1a-4c7e-9a52-0b7d1f4e8a10",
+    "stage": "checks",
+    "status": "done",
+    "message": "safety: pass (0)",
+    "data": {
+      "checker": "safety",
+      "risk_modifier": 0,
+      "status": "pass"
+    }
+  },
+  {
+    "patch_id": "3f2b8c1e-6d1a-4c7e-9a52-0b7d1f4e8a10",
+    "stage": "checks",
+    "status": "done",
+    "message": "4/4 checkers finished",
+    "data": {}
+  },
+  {
+    "patch_id": "3f2b8c1e-6d1a-4c7e-9a52-0b7d1f4e8a10",
+    "stage": "validate",
+    "status": "done",
+    "message": "0 LLM findings to validate; 2 citations checked",
+    "data": {
+      "dismissed": 0
+    }
+  },
+  {
+    "patch_id": "3f2b8c1e-6d1a-4c7e-9a52-0b7d1f4e8a10",
+    "stage": "verdict",
+    "status": "done",
+    "message": "REVIEW, score 85",
+    "data": {
+      "decision": "REVIEW",
+      "score": 85
+    }
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "$id": "pcp/verify_response.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "patch_id": {
+      "title": "Patch Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "patch_id"
+  ],
+  "title": "VerifyResponse",
+  "type": "object",
+  "x-contracts-version": "0.1.0"
+}

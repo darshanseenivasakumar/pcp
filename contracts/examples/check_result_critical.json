@@ -1,0 +1,20 @@
+{
+  "checker": "safety",
+  "risk_modifier": 90,
+  "status": "critical",
+  "findings": [
+    {
+      "id": "f1",
+      "type": "secret",
+      "source": "heuristic",
+      "confidence": 0.99,
+      "file": "src/flask/config.py",
+      "line_start": 12,
+      "line_end": 12,
+      "evidence": "AWS_KEY = \"AKIA****************\"",
+      "message": "Hard-coded AWS access key ID.",
+      "validated": "not_required"
+    }
+  ],
+  "recommended_action": "Remove the key and rotate it."
+}

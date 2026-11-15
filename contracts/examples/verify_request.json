@@ -1,0 +1,8 @@
+{
+  "task": "Make get_debug_flag also treat \"off\" and \"n\" as false.",
+  "repo_root": "C:/work/flask",
+  "diff": "diff --git a/src/flask/helpers.py b/src/flask/helpers.py\n--- a/src/flask/helpers.py\n+++ b/src/flask/helpers.py\n@@ -27,7 +27,7 @@ def get_debug_flag() -> bool:\n     :envvar:`FLASK_DEBUG` environment variable. The default is ``False``.\n     \"\"\"\n     val = os.environ.get(\"FLASK_DEBUG\")\n-    return bool(val and val.lower() not in {\"0\", \"false\", \"no\"})\n+    return bool(val and val.lower() not in {\"0\", \"false\", \"no\", \"off\", \"n\"})\n\n\n def get_load_dotenv(default: bool = True) -> bool:\ndiff --git a/tests/test_helpers.py b/tests/test_helpers.py\n--- a/tests/test_helpers.py\n+++ b/tests/test_helpers.py\n@@ -300,3 +300,9 @@ class TestHelpers:\n         assert not flask.helpers.get_debug_flag()\n+\n+\n+@pytest.mark.parametrize(\"value\", [\"off\", \"n\", \"OFF\", \"N\"])\n+def test_debug_flag_off_values(monkeypatch, value):\n+    monkeypatch.setenv(\"FLASK_DEBUG\", value)\n+    assert not flask.helpers.get_debug_flag()\n",
+  "attempt": 1,
+  "previous_patch_id": null,
+  "approve_big_rewrite": false
+}

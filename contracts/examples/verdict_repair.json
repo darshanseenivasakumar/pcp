@@ -1,0 +1,155 @@
+{
+  "patch_id": "8a41d2f0-2c9b-4e61-b3d7-5e9f0c6a7b22",
+  "score": 45,
+  "decision": "REPAIR",
+  "decision_reason": "score 45 is in the repair band (40-69), attempt 1 of 3",
+  "unproven": false,
+  "attempt": 1,
+  "score_history": [
+    45
+  ],
+  "checks": [
+    {
+      "checker": "proof",
+      "risk_modifier": 80,
+      "status": "warning",
+      "findings": [
+        {
+          "id": "f1",
+          "type": "test_failure",
+          "source": "test_output",
+          "confidence": 1.0,
+          "file": "tests/test_helpers.py",
+          "line_start": 306,
+          "line_end": 308,
+          "evidence": "FAILED tests/test_helpers.py::test_debug_flag_off_values[OFF]",
+          "message": "2 of 4 new F2P tests still fail on the patched code: upper-case values are not lowered.",
+          "validated": "not_required"
+        }
+      ],
+      "recommended_action": "Make the comparison case-insensitive."
+    },
+    {
+      "checker": "safety",
+      "risk_modifier": 40,
+      "status": "warning",
+      "findings": [
+        {
+          "id": "f2",
+          "type": "dangerous_call",
+          "source": "heuristic",
+          "confidence": 0.7,
+          "file": "src/flask/helpers.py",
+          "line_start": 31,
+          "line_end": 31,
+          "evidence": "eval(val)",
+          "message": "eval() on an environment variable.",
+          "validated": "not_required"
+        }
+      ],
+      "recommended_action": "Remove eval()."
+    },
+    {
+      "checker": "coverage",
+      "risk_modifier": 60,
+      "status": "warning",
+      "findings": [
+        {
+          "id": "f3",
+          "type": "missing_test",
+          "source": "heuristic",
+          "confidence": 0.6,
+          "file": "src/flask/helpers.py",
+          "line_start": 31,
+          "line_end": 31,
+          "evidence": "eval(val)",
+          "message": "Changed line 31 is not executed by any test.",
+          "validated": "not_required"
+        }
+      ],
+      "recommended_action": "Cover the new branch."
+    },
+    {
+      "checker": "scope",
+      "risk_modifier": 25,
+      "status": "warning",
+      "findings": [],
+      "recommended_action": "none"
+    }
+  ],
+  "proof": {
+    "attempt": 1,
+    "sandbox": "local-temp",
+    "frozen_manifest": {
+      "f2p": [
+        "tests/test_helpers.py::test_debug_flag_off_values[off]",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]"
+      ],
+      "p2p": [
+        "tests/test_helpers.py"
+      ]
+    },
+    "baseline": {
+      "exit_code": 1,
+      "passed": 58,
+      "failed": 4,
+      "skipped": 0,
+      "errors": 0,
+      "duration_s": 3.1,
+      "tests": {},
+      "output_tail": ""
+    },
+    "patched": {
+      "exit_code": 1,
+      "passed": 60,
+      "failed": 2,
+      "skipped": 0,
+      "errors": 0,
+      "duration_s": 3.3,
+      "tests": {
+        "tests/test_helpers.py::test_debug_flag_off_values[off]": "passed",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]": "passed",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]": "failed",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]": "failed"
+      },
+      "output_tail": "FAILED tests/test_helpers.py::test_debug_flag_off_values[OFF] - assert not True\nFAILED tests/test_helpers.py::test_debug_flag_off_values[N] - assert not True"
+    },
+    "f2p_ok": false,
+    "p2p_ok": true,
+    "tampering": [],
+    "apply_ok": true,
+    "error": null
+  },
+  "hunk_evidence": {
+    "h1": {
+      "tests": [
+        "tests/test_helpers.py::test_debug_flag_off_values[off]",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]"
+      ],
+      "result": "fail",
+      "findings": [
+        "f1",
+        "f2",
+        "f3"
+      ]
+    },
+    "h2": {
+      "tests": [
+        "tests/test_helpers.py::test_debug_flag_off_values[off]",
+        "tests/test_helpers.py::test_debug_flag_off_values[n]",
+        "tests/test_helpers.py::test_debug_flag_off_values[OFF]",
+        "tests/test_helpers.py::test_debug_flag_off_values[N]"
+      ],
+      "result": "fail",
+      "findings": []
+    }
+  },
+  "repair_instructions": "Fix these and resubmit (attempt 2 of 3). Do NOT edit, skip or weaken the frozen tests.\n\n1. [proof] 2 of 4 new tests fail.\n   FAILED tests/test_helpers.py::test_debug_flag_off_values[OFF] - assert not True\n2. [safety] src/flask/helpers.py:31 eval() on an environment variable. Remove eval().\n3. [coverage] src/flask/helpers.py:31 is not executed by any test.",
+  "summary_md": "**Score 45: sent back for repair.** New tests still fail for upper-case values, and the patch adds `eval()`.",
+  "big_rewrite_approved": false,
+  "created_at": "2026-11-16T10:15:30Z"
+}

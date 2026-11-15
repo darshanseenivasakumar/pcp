@@ -1,0 +1,40 @@
+{
+  "$id": "pcp/llm_response.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "errors": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Errors",
+      "type": "array"
+    },
+    "failed_over": {
+      "default": false,
+      "title": "Failed Over",
+      "type": "boolean"
+    },
+    "failover_ms": {
+      "minimum": 0,
+      "title": "Failover Ms",
+      "type": "integer"
+    },
+    "model_used": {
+      "title": "Model Used",
+      "type": "string"
+    },
+    "text": {
+      "title": "Text",
+      "type": "string"
+    }
+  },
+  "required": [
+    "text",
+    "model_used",
+    "failover_ms"
+  ],
+  "title": "LLMResponse",
+  "type": "object",
+  "x-contracts-version": "0.1.0"
+}

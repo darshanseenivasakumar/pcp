@@ -1,0 +1,30 @@
+diff --git a/src/tiny/mathx.py b/src/tiny/mathx.py
+index 5e57575..000e896 100644
+--- a/src/tiny/mathx.py
++++ b/src/tiny/mathx.py
+@@ -1,6 +1,8 @@
+ """Three small functions used as PCP's test fixture."""
+ 
+-TRUE_VALUES = {"1", "true", "yes"}
++AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
++
++TRUE_VALUES = {"1", "true", "yes", "on"}
+ 
+ 
+ def clamp(x: float, lo: float, hi: float) -> float:
+diff --git a/tests/test_mathx.py b/tests/test_mathx.py
+index abd479c..2c21745 100644
+--- a/tests/test_mathx.py
++++ b/tests/test_mathx.py
+@@ -12,11 +12,6 @@ def test_clamp_edges():
+     assert clamp(11, 0, 10) == 10
+ 
+ 
+-def test_clamp_bad_range():
+-    with pytest.raises(ValueError):
+-        clamp(1, 10, 0)
+-
+-
+ @pytest.mark.parametrize("value", ["1", "true", "YES", " yes "])
+ def test_parse_bool_true(value):
+     assert parse_bool(value) is True

@@ -1,0 +1,14 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a code reviewer."
+    },
+    {
+      "role": "user",
+      "content": "Is this finding real? ..."
+    }
+  ],
+  "purpose": "validator",
+  "max_tokens": null
+}

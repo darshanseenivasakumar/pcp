@@ -1,0 +1,12 @@
+{
+  "tests": [
+    "tests/test_helpers.py::test_debug_flag_off_values[off]",
+    "tests/test_helpers.py::test_debug_flag_off_values[n]",
+    "tests/test_helpers.py::test_debug_flag_off_values[OFF]",
+    "tests/test_helpers.py::test_debug_flag_off_values[N]"
+  ],
+  "result": "pass",
+  "findings": [
+    "f3"
+  ]
+}

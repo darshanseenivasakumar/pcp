@@ -1,0 +1,8 @@
+{
+  "hunk_id": "h1",
+  "file": "src/flask/helpers.py",
+  "old_start": 27,
+  "old_lines": 7,
+  "new_start": 27,
+  "new_lines": 7
+}
