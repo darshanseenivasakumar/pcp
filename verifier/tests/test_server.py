@@ -195,3 +195,38 @@ async def test_journal_restores_chain_after_restart(client, tiny_repo, journal):
         v = await wait_verdict(c2, r.json()["patch_id"])
     assert v.decision == "BLOCK"
     assert json.loads(journal.get_run(first)["frozen_json"])["manifest"]["f2p"]
+
+
+async def test_llm_simulate_and_status(journal):
+    gw = Gateway(FakeProvider("main", reply="m"), FakeProvider("backup", reply="b"))
+    app = create_app(journal=journal, gateway=gw)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
+        body = {"messages": [{"role": "user", "content": "x"}], "purpose": "demo"}
+        assert (await c.post("/llm/complete", json=body)).json()["model_used"] == "primary:main"
+        r = await c.post("/llm/simulate", json={"primary": "fail"})
+        assert r.status_code == 200 and r.json()["models"][0]["simulated"] == "fail"
+        assert (await c.post("/llm/complete", json=body)).json()["model_used"] == "secondary:backup"
+        st = (await c.get("/llm/status")).json()
+        assert st["last_model_used"] == "secondary:backup" and st["last_failover_ms"] >= 250
+        assert (await c.post("/llm/simulate", json={"primary": "melt"})).status_code == 422
+        await c.post("/llm/simulate", json={"primary": "ok"})
+        assert (await c.post("/llm/complete", json=body)).json()["model_used"] == "primary:main"
+
+
+async def test_llm_status_unconfigured(journal, monkeypatch):
+    for k in (
+        "PCP_PRIMARY_PROVIDER",
+        "PCP_PRIMARY_BASE_URL",
+        "PCP_SECONDARY_PROVIDER",
+        "PCP_SECONDARY_BASE_URL",
+    ):
+        monkeypatch.delenv(k, raising=False)
+    app = create_app(journal=journal)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
+        assert (await c.get("/llm/status")).json() == {
+            "configured": False,
+            "models": [],
+            "last_model_used": None,
+            "last_failover_ms": None,
+        }
+        assert (await c.post("/llm/simulate", json={"primary": "fail"})).status_code == 503

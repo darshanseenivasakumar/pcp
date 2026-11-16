@@ -40,6 +40,12 @@ Contract changes: edit `contracts/pcp_contracts.py`, run `python contracts/gen_s
 4. **Verdict** (`core/verdict.py`): `score = clamp(100 − Σ modifier×weight)`, and `decide()` routes it. Invariants are enforced in `contracts/pcp_contracts.py`.
 
 **Model gateway** (`gateway/`, `POST /llm/complete`): primary → retry once → secondary, configured by `PCP_PRIMARY_*`/`PCP_SECONDARY_*` (OpenAI-compatible or `fake`). Every call is journaled.
+**Task C demo (break the primary model live):**
+```bash
+curl -X POST http://127.0.0.1:8765/llm/simulate -H 'Content-Type: application/json' -d '{"primary":"fail"}'     # or "timeout", then "ok" to restore
+curl http://127.0.0.1:8765/llm/status     # which model answered last + last failover_ms
+```
+A failing primary (HTTP 503) is retried once (300 ms backoff) and then the backup answers in ~0.3 s. A hanging primary is not retried, so the backup answers one timeout later.
 **Journal:** SQLite `verifier/data/journal.sqlite` (runs + llm_calls).
 **Docker sandbox (opt-in):** `docker build -t pcp-sandbox:py312 -f verifier/docker/Dockerfile.sandbox verifier/docker`, then set `PCP_SANDBOX=docker`. Tests run with `--network none` (verified by a test that tries to connect out). Same decisions as local; slower on Windows.
 **Security:** `/verify` executes tests, so the server only binds localhost, rejects browser origins, and honours `PCP_API_TOKEN`.

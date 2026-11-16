@@ -1,6 +1,8 @@
 """Model gateway with automatic failover (Task C evidence).
 
-primary -> retry once (short backoff) -> secondary. Every call has a timeout,
+primary -> retry once (short backoff) -> secondary. A primary that TIMED OUT
+is not retried: a hung model usually hangs again, and a second timeout would
+double the wait before the backup answers. Every call has a timeout,
 and every attempt is journaled with which model answered and how long the
 failover took.
 """
@@ -16,13 +18,17 @@ from typing import Protocol
 
 import httpx
 
-from pcp_verifier.contracts import LLMMessage, LLMRequest, LLMResponse
+from pcp_verifier.contracts import LLMMessage, LLMModelStatus, LLMRequest, LLMResponse, LLMStatus
 
 RETRY_BACKOFF_S = 0.3
 
 
 class ProviderError(RuntimeError):
     pass
+
+
+class ProviderTimeout(ProviderError):
+    """The model did not answer within the timeout (not worth retrying)."""
 
 
 class GatewayError(RuntimeError):
@@ -61,7 +67,7 @@ class OpenAICompatProvider:
                     self.base_url.rstrip("/") + "/chat/completions", json=body, headers=headers
                 )
         except httpx.TimeoutException as e:
-            raise ProviderError(f"{self.name}: timeout after {timeout:.0f}s") from e
+            raise ProviderTimeout(f"{self.name}: timeout after {timeout:.0f}s") from e
         except httpx.HTTPError as e:
             raise ProviderError(f"{self.name}: {type(e).__name__}: {e}") from e
         if resp.status_code >= 400:
@@ -93,7 +99,7 @@ class FakeProvider:
             raise ProviderError(f"{self.name}: HTTP 503 Service Unavailable (simulated)")
         if self.mode == "timeout":
             await asyncio.sleep(timeout)
-            raise ProviderError(f"{self.name}: timeout after {timeout:.0f}s (simulated)")
+            raise ProviderTimeout(f"{self.name}: timeout after {timeout:.0f}s (simulated)")
         return self.reply
 
 
@@ -111,20 +117,48 @@ class Gateway:
         self.primary, self.secondary = primary, secondary
         self.timeout_s = timeout_s
         self.journal = journal
+        self.simulated = "ok"  # "ok" | "fail" | "timeout": a live, demo-only outage of the primary
+        self.last_model_used: str | None = None
+        self.last_failover_ms: int | None = None
 
+    # ------------------------------------------------------------ demo switch
+    def simulate(self, mode: str) -> None:
+        if mode not in {"ok", "fail", "timeout"}:
+            raise ValueError(f"unknown simulate mode {mode!r}")
+        self.simulated = mode
+
+    def status(self) -> LLMStatus:
+        models = [LLMModelStatus(role="primary", name=self.primary.name, simulated=self.simulated)]
+        if self.secondary is not None:
+            models.append(LLMModelStatus(role="secondary", name=self.secondary.name))
+        return LLMStatus(
+            configured=True,
+            models=models,
+            last_model_used=self.last_model_used,
+            last_failover_ms=self.last_failover_ms,
+        )
+
+    def _effective_primary(self) -> Provider:
+        if self.simulated == "ok":
+            return self.primary
+        return FakeProvider(name=self.primary.name, mode=self.simulated)
+
+    # ------------------------------------------------------------ calls
     async def _try(self, provider: Provider, req: LLMRequest, label: str, errors: list[str]):
+        """Returns (text or None, timed_out)."""
         t0 = time.monotonic()
         try:
             text = await asyncio.wait_for(
                 provider.complete(req.messages, req.max_tokens, self.timeout_s), self.timeout_s + 1
             )
             self._log(req, provider.name, label, True, t0, None)
-            return text
+            return text, False
         except (ProviderError, TimeoutError) as e:
+            timed_out = not isinstance(e, ProviderError) or isinstance(e, ProviderTimeout)
             msg = str(e) or f"{provider.name}: timeout after {self.timeout_s:.0f}s"
             errors.append(f"{label}: {msg}")
             self._log(req, provider.name, label, False, t0, msg)
-            return None
+            return None, timed_out
 
     def _log(self, req, model, label, ok, t0, error):
         if self.journal:
@@ -142,23 +176,27 @@ class Gateway:
     async def complete(self, req: LLMRequest) -> LLMResponse:
         start = time.monotonic()
         errors: list[str] = []
-        text = await self._try(self.primary, req, "primary", errors)
-        if text is None:
+        primary = self._effective_primary()
+        text, timed_out = await self._try(primary, req, "primary", errors)
+        if text is None and not timed_out:
             await asyncio.sleep(RETRY_BACKOFF_S)
-            text = await self._try(self.primary, req, "primary retry", errors)
+            text, _ = await self._try(primary, req, "primary retry", errors)
         if text is not None:
+            self.last_model_used, self.last_failover_ms = f"primary:{self.primary.name}", 0
             return LLMResponse(
-                text=text, model_used=f"primary:{self.primary.name}", failover_ms=0, errors=errors
+                text=text, model_used=self.last_model_used, failover_ms=0, errors=errors
             )
         if self.secondary is None:
             raise GatewayError(errors)
         failover_ms = int((time.monotonic() - start) * 1000)
-        text = await self._try(self.secondary, req, "secondary", errors)
+        text, _ = await self._try(self.secondary, req, "secondary", errors)
         if text is None:
             raise GatewayError(errors)
+        self.last_model_used = f"secondary:{self.secondary.name}"
+        self.last_failover_ms = failover_ms
         return LLMResponse(
             text=text,
-            model_used=f"secondary:{self.secondary.name}",
+            model_used=self.last_model_used,
             failover_ms=failover_ms,
             failed_over=True,
             errors=errors,

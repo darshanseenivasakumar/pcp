@@ -151,9 +151,31 @@ async def test_gateway_fails_over_and_journals():
     assert [e["attempt"] for e in log] == ["primary", "primary retry", "secondary"]
 
 
-async def test_gateway_timeout_counts_as_failure():
-    gw = Gateway(FakeProvider("p", mode="timeout"), FakeProvider("s", reply="b"), timeout_s=0.1)
-    assert (await gw.complete(REQ)).model_used == "secondary:s"
+async def test_gateway_timeout_is_not_retried():
+    log = []
+    primary = FakeProvider("p", mode="timeout")
+    gw = Gateway(primary, FakeProvider("s", reply="b"), timeout_s=0.2, journal=log.append)
+    r = await gw.complete(REQ)
+    assert r.model_used == "secondary:s" and primary.calls == 1
+    assert [e["attempt"] for e in log] == ["primary", "secondary"]
+    assert r.failover_ms < 2 * 200  # one timeout, not two
+
+
+async def test_simulated_outage_switches_live():
+    primary, secondary = FakeProvider("p", reply="from-p"), FakeProvider("s", reply="from-s")
+    gw = Gateway(primary, secondary)
+    assert (await gw.complete(REQ)).text == "from-p"
+    gw.simulate("fail")
+    r = await gw.complete(REQ)
+    assert r.text == "from-s" and r.failed_over and "simulated" in r.errors[0]
+    assert primary.calls == 1  # the real primary is never called while broken
+    st = gw.status()
+    assert [(m.role, m.simulated) for m in st.models] == [("primary", "fail"), ("secondary", "ok")]
+    assert st.last_model_used == "secondary:s" and st.last_failover_ms == r.failover_ms
+    gw.simulate("ok")
+    assert (await gw.complete(REQ)).text == "from-p" and gw.status().last_failover_ms == 0
+    with pytest.raises(ValueError):
+        gw.simulate("explode")
 
 
 async def test_gateway_all_fail():

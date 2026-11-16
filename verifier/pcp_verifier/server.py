@@ -5,6 +5,8 @@ GET  /verify/{id}/events     live progress (SSE)
 GET  /verify/{id}            Verdict (200) or {"status": "running"} (202)
 POST /verify/{id}/cancel     kill the sandbox; nothing is written
 POST /llm/complete           model gateway with failover
+GET  /llm/status             which models are configured, last failover
+POST /llm/simulate           demo: make the primary model fail (ok|fail|timeout)
 GET  /health                 liveness
 
 Security: /verify runs the patch's tests, i.e. code. The server binds to
@@ -31,6 +33,8 @@ from pcp_verifier.contracts import (
     Health,
     LLMRequest,
     LLMResponse,
+    LLMSimulateRequest,
+    LLMStatus,
     Verdict,
     VerifyRequest,
     VerifyResponse,
@@ -232,6 +236,24 @@ def create_app(journal: Journal | None = None, gateway=None) -> FastAPI:
             return await gateway.complete(req)
         except GatewayError as e:
             raise HTTPException(502, {"message": str(e), "errors": e.errors}) from e
+
+    @app.get("/llm/status", response_model=LLMStatus)
+    async def llm_status() -> LLMStatus:
+        if gateway is None:
+            return LLMStatus(configured=False)
+        return gateway.status()
+
+    @app.post("/llm/simulate", response_model=LLMStatus)
+    async def llm_simulate(req: LLMSimulateRequest) -> LLMStatus:
+        """Task C demo: break the primary model live (fail = HTTP 503, timeout = hang)."""
+        if gateway is None:
+            raise HTTPException(
+                503, "no model configured (set PCP_PRIMARY_* / PCP_SECONDARY_* in .env)"
+            )
+        if os.environ.get("PCP_ALLOW_SIMULATE", "1") == "0":
+            raise HTTPException(403, "simulation disabled (PCP_ALLOW_SIMULATE=0)")
+        gateway.simulate(req.primary)
+        return gateway.status()
 
     return app
 

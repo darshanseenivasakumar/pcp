@@ -313,9 +313,10 @@ def write_report(rows: list[Row], failover: list[dict], n: int) -> str:
         )
     lines += [
         "",
-        "`fail` = primary returns HTTP 503; `timeout` = primary hangs past the 1 s timeout. The gateway retries"
-        " the primary once (300 ms backoff) and then switches to the backup; `failover_ms` is the time from the"
-        " request to the switch.",
+        "`fail` = primary returns HTTP 503: retried once (300 ms backoff), then the backup answers."
+        " `timeout` = primary hangs past the 1 s timeout: not retried (a hung model usually hangs"
+        " again), so the backup answers one timeout later. `failover_ms` = time from the request to"
+        " the switch.",
         "",
     ]
     md = "\n".join(lines)
