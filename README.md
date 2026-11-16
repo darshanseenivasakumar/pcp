@@ -52,7 +52,7 @@ A failing primary (HTTP 503) is retried once (300 ms backoff) and then the backu
 
 **Tests:** `.venv/Scripts/python -m pytest verifier -q`, which runs 198 tests (real pytest runs on `fixtures/tiny_repo`; the 4 Docker tests skip when Docker is not running).
 
-**Bench:** `pcp-bench fetch` (clones Flask 3.1.3, builds `bench/.venvs/flask`, generates `bench/tasks/{A,B}/*.diff`), then `pcp-bench run --n 3` → [`bench/results.md`](bench/results.md). Latest: **57/57 runs routed correctly, 0 false blocks, 12/12 tamper attempts and 6/6 malicious patches blocked, repair loop 9/9, failover to the backup model in ~310 ms.**
+**Bench:** `pcp-bench fetch` (clones Flask 3.1.3, builds `bench/.venvs/flask`, generates `bench/tasks/{A,B}/*.diff`), then `pcp-bench run --n 3` → [`bench/results.md`](bench/results.md). Latest: **57/57 runs routed correctly, 0 false blocks, 12/12 tamper attempts and 6/6 malicious patches blocked, repair loop 9/9, failover to the backup model in ~310 ms (HTTP 503) or ~1.0 s (hang).** Latency depends on machine load: p50 11.1 s on an idle laptop (16 Nov 00:36), 17.8 s with other apps using ~70% CPU (16 Nov 23:10, the committed `results.md`).
 
 ## Person 2: extension
 
