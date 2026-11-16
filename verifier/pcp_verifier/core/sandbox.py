@@ -119,7 +119,20 @@ class LocalTempSandbox:
         with self._lock:
             procs = list(self._procs)
         for p in procs:
-            _kill_tree(p)
+            self._terminate(p)
+
+    def _terminate(self, proc: subprocess.Popen) -> None:
+        _kill_tree(proc)
+
+    def to_rel(self, path: str) -> str | None:
+        """Map a path reported by a test run back to a repo-relative posix path."""
+        p = Path(path)
+        if not p.is_absolute():
+            return p.as_posix()
+        try:
+            return p.resolve().relative_to(self.work.resolve()).as_posix()
+        except ValueError:
+            return None
 
     def __enter__(self):
         return self
@@ -181,7 +194,7 @@ class LocalTempSandbox:
             out, err = proc.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
             timed_out = True
-            _kill_tree(proc)
+            self._terminate(proc)
             out, err = proc.communicate()
         finally:
             with self._lock:
@@ -201,31 +214,57 @@ class LocalTempSandbox:
 
 
 class DockerSandbox(LocalTempSandbox):
-    """Runs Python inside `docker run --network none`; git apply still runs on the host copy."""
+    """Runs Python inside `docker run --network none`; git apply still runs on the host copy.
+
+    The whole shadow folder (base) is mounted at /sandbox, so the repo is
+    /sandbox/repo and every host path under base maps 1:1 into the container.
+    Build the image with: docker build -t pcp-sandbox:py312 -f verifier/docker/Dockerfile.sandbox .
+    """
 
     kind = "docker"
+    MOUNT = "/sandbox"
 
     def __init__(self, repo_root, label="shadow", image: str | None = None, **_):
         super().__init__(repo_root, label)
         self.image = image or os.environ.get("PCP_DOCKER_IMAGE", "pcp-sandbox:py312")
-        self.container = f"pcp-{uuid.uuid4().hex[:12]}"
+        self.python = "python"  # the container's interpreter
+        self._containers: set[str] = set()
 
     @property
     def name(self) -> str:
         return f"docker:{self.image}"
 
+    def _to_container(self, arg: str) -> str:
+        base = str(self.base)
+        if base not in arg:
+            return arg
+        head, _, tail = arg.partition(base)
+        return head + self.MOUNT + tail.replace("\\", "/")
+
     def python_cmd(self, *args: str) -> list[str]:
+        name = f"pcp-{uuid.uuid4().hex[:12]}"
+        self._containers.add(name)
+        user = [] if IS_WINDOWS else ["--user", f"{os.getuid()}:{os.getgid()}"]
+        work = f"{self.MOUNT}/repo"
         return [
-            "docker", "run", "--rm", "--name", self.container, "--network", "none",
-            "--memory", "2g", "--cpus", "2",
-            "-e", "PYTHONPATH=/w/src:/w", "-e", "PYTHONDONTWRITEBYTECODE=1",
-            "-v", f"{self.base}:/sandbox", "-v", f"{self.work}:/w", "-w", "/w",
-            self.image, "python", *[a.replace(str(self.base), "/sandbox") for a in args],
+            "docker", "run", "--rm", "--name", name, "--network", "none",
+            "--memory", "2g", "--cpus", "2", "--pids-limit", "512", *user,
+            "-e", f"PYTHONPATH={work}/src:{work}", "-e", "PYTHONDONTWRITEBYTECODE=1",
+            "-e", "PIP_NO_INDEX=1", "-v", f"{self.base}:{self.MOUNT}", "-w", work,
+            self.image, "python", *[self._to_container(a) for a in args],
         ]  # fmt: skip
 
-    def kill(self) -> None:
-        super().kill()
-        subprocess.run(["docker", "kill", self.container], capture_output=True, timeout=15)
+    def _terminate(self, proc: subprocess.Popen) -> None:
+        # killing the docker CLI is not enough: the container must die too
+        for name in list(self._containers):
+            subprocess.run(["docker", "kill", name], capture_output=True, timeout=15)
+        _kill_tree(proc)
+
+    def to_rel(self, path: str) -> str | None:
+        prefix = f"{self.MOUNT}/repo/"
+        if path.replace("\\", "/").startswith(prefix):
+            return path.replace("\\", "/")[len(prefix) :]
+        return super().to_rel(path)
 
 
 def make_sandbox(repo_root: str | Path, label: str) -> LocalTempSandbox:

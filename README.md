@@ -41,9 +41,10 @@ Contract changes: edit `contracts/pcp_contracts.py`, run `python contracts/gen_s
 
 **Model gateway** (`gateway/`, `POST /llm/complete`): primary → retry once → secondary, configured by `PCP_PRIMARY_*`/`PCP_SECONDARY_*` (OpenAI-compatible or `fake`). Every call is journaled.
 **Journal:** SQLite `verifier/data/journal.sqlite` (runs + llm_calls).
+**Docker sandbox (opt-in):** `docker build -t pcp-sandbox:py312 -f verifier/docker/Dockerfile.sandbox verifier/docker`, then set `PCP_SANDBOX=docker`. Tests run with `--network none` (verified by a test that tries to connect out). Same decisions as local; slower on Windows.
 **Security:** `/verify` executes tests, so the server only binds localhost, rejects browser origins, and honours `PCP_API_TOKEN`.
 
-**Tests:** `.venv/Scripts/python -m pytest verifier -q`, which runs 194 tests (real pytest runs on `fixtures/tiny_repo`).
+**Tests:** `.venv/Scripts/python -m pytest verifier -q`, which runs 198 tests (real pytest runs on `fixtures/tiny_repo`; the 4 Docker tests skip when Docker is not running).
 
 **Bench:** `pcp-bench fetch` (clones Flask 3.1.3, builds `bench/.venvs/flask`, generates `bench/tasks/{A,B}/*.diff`), then `pcp-bench run --n 3` → [`bench/results.md`](bench/results.md). Latest: **57/57 runs routed correctly, 0 false blocks, 12/12 tamper attempts and 6/6 malicious patches blocked, repair loop 9/9, failover to the backup model in ~310 ms.**
 

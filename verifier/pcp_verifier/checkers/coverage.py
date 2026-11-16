@@ -36,15 +36,10 @@ def _source_files(ctx):
 def _read_cov(sb, cov_file) -> dict:
     files = json.loads(cov_file.read_text(encoding="utf-8")).get("files", {})
     out = {}
-    work = sb.work.resolve()
     for path, info in files.items():
-        p = Path(path)
-        if p.is_absolute():
-            try:
-                p = p.resolve().relative_to(work)
-            except ValueError:
-                continue  # outside the shadow (e.g. site-packages)
-        out[p.as_posix()] = set(info.get("missing_lines", []))
+        rel = sb.to_rel(path)
+        if rel is not None:  # None = outside the shadow (e.g. site-packages)
+            out[rel] = set(info.get("missing_lines", []))
     return out
 
 
@@ -149,7 +144,6 @@ async def run(ctx: PatchContext) -> CheckResult:
 
 
 def _root(ctx: PatchContext):
-    from pathlib import Path
 
     shadow = Path(ctx.shadow_root)
     return shadow if shadow.is_dir() else Path(ctx.repo_root)
