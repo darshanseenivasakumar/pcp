@@ -1,0 +1,23 @@
+{
+  "$id": "pcp/llm_simulate_request.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "POST /llm/simulate: make the primary model fail on purpose, live, for the demo.",
+  "properties": {
+    "primary": {
+      "enum": [
+        "ok",
+        "fail",
+        "timeout"
+      ],
+      "title": "Primary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "primary"
+  ],
+  "title": "LLMSimulateRequest",
+  "type": "object",
+  "x-contracts-version": "0.2.0"
+}

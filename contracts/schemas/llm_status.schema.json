@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "LLMModelStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "primary",
+            "secondary"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "simulated": {
+          "default": "ok",
+          "enum": [
+            "ok",
+            "fail",
+            "timeout"
+          ],
+          "title": "Simulated",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "name"
+      ],
+      "title": "LLMModelStatus",
+      "type": "object"
+    }
+  },
+  "$id": "pcp/llm_status.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "GET /llm/status and the reply to POST /llm/simulate (Task C demo + resilience UI).",
+  "properties": {
+    "configured": {
+      "title": "Configured",
+      "type": "boolean"
+    },
+    "last_failover_ms": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Failover Ms"
+    },
+    "last_model_used": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Model Used"
+    },
+    "models": {
+      "items": {
+        "$ref": "#/$defs/LLMModelStatus"
+      },
+      "title": "Models",
+      "type": "array"
+    }
+  },
+  "required": [
+    "configured"
+  ],
+  "title": "LLMStatus",
+  "type": "object",
+  "x-contracts-version": "0.2.0"
+}

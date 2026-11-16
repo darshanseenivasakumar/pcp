@@ -1,6 +1,6 @@
 // PCP shared message contracts: TypeScript mirror of contracts/pcp_contracts.py.
 // Hand-written. Keep in sync in the same contracts-only PR that changes the Python models.
-// Contracts version: 0.1.0
+// Contracts version: 0.2.0
 
 export type CheckerName = "proof" | "safety" | "coverage" | "scope";
 export type CheckStatus = "pass" | "warning" | "critical";
@@ -22,6 +22,8 @@ export type EventStatus = "started" | "done" | "failed";
 export type TestOutcome = "passed" | "failed" | "skipped" | "error";
 export type TamperKind = "deleted" | "skipped" | "weakened_assert" | "renamed";
 export type HunkResult = "pass" | "fail" | "untested";
+/** "ok" = the model behaves normally */
+export type SimulateMode = "ok" | "fail" | "timeout";
 
 export const REVIEW_THRESHOLD = 70;
 export const REPAIR_THRESHOLD = 40;
@@ -169,6 +171,25 @@ export interface LLMResponse {
   failover_ms: number;
   failed_over?: boolean;
   errors?: string[];
+}
+
+/** GET /llm/status, and the reply to POST /llm/simulate */
+export interface LLMModelStatus {
+  role: "primary" | "secondary";
+  name: string;
+  simulated?: SimulateMode;
+}
+
+export interface LLMStatus {
+  configured: boolean;
+  models?: LLMModelStatus[];
+  last_model_used?: string | null;
+  last_failover_ms?: number | null;
+}
+
+/** POST /llm/simulate: make the primary model fail on purpose (Task C demo) */
+export interface LLMSimulateRequest {
+  primary: SimulateMode;
 }
 
 export interface Health {
