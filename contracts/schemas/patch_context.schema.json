@@ -309,5 +309,5 @@
   ],
   "title": "PatchContext",
   "type": "object",
-  "x-contracts-version": "0.1.0"
+  "x-contracts-version": "0.2.0"
 }

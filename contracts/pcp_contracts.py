@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CONTRACTS_VERSION = "0.1.0"
+CONTRACTS_VERSION = "0.2.0"
 
 CheckerName = Literal["proof", "safety", "coverage", "scope"]
 CheckStatus = Literal["pass", "warning", "critical"]
@@ -36,6 +36,7 @@ EventStatus = Literal["started", "done", "failed"]
 TestOutcome = Literal["passed", "failed", "skipped", "error"]
 TamperKind = Literal["deleted", "skipped", "weakened_assert", "renamed"]
 HunkResult = Literal["pass", "fail", "untested"]
+SimulateMode = Literal["ok", "fail", "timeout"]  # "ok" = the model behaves normally
 
 REVIEW_THRESHOLD = 70
 REPAIR_THRESHOLD = 40
@@ -233,6 +234,27 @@ class LLMResponse(_Strict):
     errors: list[str] = Field(default_factory=list)
 
 
+class LLMModelStatus(_Strict):
+    role: Literal["primary", "secondary"]
+    name: str
+    simulated: SimulateMode = "ok"
+
+
+class LLMStatus(_Strict):
+    """GET /llm/status and the reply to POST /llm/simulate (Task C demo + resilience UI)."""
+
+    configured: bool
+    models: list[LLMModelStatus] = Field(default_factory=list)
+    last_model_used: str | None = None
+    last_failover_ms: int | None = Field(default=None, ge=0)
+
+
+class LLMSimulateRequest(_Strict):
+    """POST /llm/simulate: make the primary model fail on purpose, live, for the demo."""
+
+    primary: SimulateMode
+
+
 class Health(_Strict):
     status: Literal["ok"]
     version: str
@@ -255,6 +277,8 @@ MODELS: dict[str, type[BaseModel]] = {
     "verify_response": VerifyResponse,
     "llm_request": LLMRequest,
     "llm_response": LLMResponse,
+    "llm_status": LLMStatus,
+    "llm_simulate_request": LLMSimulateRequest,
     "health": Health,
 }
 
