@@ -45,6 +45,14 @@
       {
         "command": "pcp.showResilience",
         "title": "PCP: Model Resilience (break primary)"
+      },
+      {
+        "command": "pcp.showAuditLog",
+        "title": "PCP: Show Tool Audit Log"
+      },
+      {
+        "command": "pcp.copyMcpUrl",
+        "title": "PCP: Copy MCP Server URL (for TrueForge)"
       }
     ],
     "menus": {

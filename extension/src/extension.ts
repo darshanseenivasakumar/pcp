@@ -8,12 +8,17 @@ import type { AgentBackend } from "./agent/loop";
 import { TrueForgeBackend } from "./agent/trueforge";
 import type { ContextBundle, ContextRequest } from "./context/assemble";
 import { assembleContext, nodeRepoReader, renderContext } from "./context/assemble";
+import type { McpHost } from "./mcpHost";
+import { startMcpHost } from "./mcpHost";
+import { AuditPanel } from "./ui/auditPanel";
 import { ContextPanel } from "./ui/contextPanel";
 import type { ActiveReview } from "./ui/controller";
 import { cancelCurrent, runVerified } from "./ui/controller";
 import { ResiliencePanel } from "./ui/resiliencePanel";
 
 const cfg = () => vscode.workspace.getConfiguration("pcp");
+let mcp: McpHost | undefined;
+let lastTask: string | undefined;
 
 function client(): VerifierClient {
   return new VerifierClient({
@@ -82,13 +87,16 @@ async function buildContext(root: string, req: Omit<ContextRequest, "budgetToken
   return { text: renderContext(bundle), bundle };
 }
 
-const runOptions = () => ({
-  client: client(),
-  maxAttempts: cfg().get<number>("maxAttempts", 3),
-  verdictTimeoutMs: cfg().get<number>("verdictTimeoutMs", 600000),
-  writeHunk: hooks.writeHunk,
-  onActiveReview: (a: ActiveReview | undefined) => (hooks.activeReview = a),
-});
+function runOptions(task: string) {
+  lastTask = task; // run_tests (MCP) verifies against the current task
+  return {
+    client: client(),
+    maxAttempts: cfg().get<number>("maxAttempts", 3),
+    verdictTimeoutMs: cfg().get<number>("verdictTimeoutMs", 600000),
+    writeHunk: hooks.writeHunk,
+    onActiveReview: (a: ActiveReview | undefined) => (hooks.activeReview = a),
+  };
+}
 
 async function runAgentTask(): Promise<void> {
   const root = repoRoot(vscode.window.activeTextEditor?.document.uri);
@@ -101,7 +109,7 @@ async function runAgentTask(): Promise<void> {
   });
   if (!task || !(await ensureVerifier())) return;
   const ctx = await buildContext(root, { task }, true);
-  await runVerified({ ...runOptions(), mode: "agent", title: "PCP: Agent task", task, repoRoot: root, backend: backend(), context: ctx.text });
+  await runVerified({ ...runOptions(task), mode: "agent", title: "PCP: Agent task", task, repoRoot: root, backend: backend(), context: ctx.text });
 }
 
 async function inlineEdit(): Promise<void> {
@@ -121,16 +129,23 @@ async function inlineEdit(): Promise<void> {
   const task = `${instruction} (Selected code: ${rel} lines ${sel.start.line + 1}-${sel.end.line + 1}.)`;
   const selection = { startLine: sel.start.line + 1, endLine: sel.end.line + 1, text: editor.document.getText(sel) };
   const ctx = await buildContext(root, { task, focusFile: rel, selection }, false);
-  await runVerified({ ...runOptions(), mode: "inline", title: "PCP: Inline edit", task, repoRoot: root, backend: backend(), context: ctx.text });
+  await runVerified({ ...runOptions(task), mode: "inline", title: "PCP: Inline edit", task, repoRoot: root, backend: backend(), context: ctx.text });
+}
+
+/** Programmatic form (demo scripts, PCP_AUTORUN): diff paths in attempt order + the task. */
+export interface VerifyDiffArgs {
+  diffs: string[];
+  task?: string;
+  repoRoot?: string;
 }
 
 /** Verify one .diff, or replay several as attempts 1..n of a repair loop (demo / bench diffs). */
-async function verifyDiffFiles(): Promise<void> {
-  const root = repoRoot(vscode.window.activeTextEditor?.document.uri);
+async function verifyDiffFiles(args?: VerifyDiffArgs): Promise<void> {
+  const root = args?.repoRoot ?? repoRoot(vscode.window.activeTextEditor?.document.uri);
   if (!root) return void vscode.window.showErrorMessage("Open the repository folder first.");
-  const diffs: string[] = [];
-  let firstPath: string | undefined;
-  for (;;) {
+  const diffs: string[] = (args?.diffs ?? []).map((p) => readFileSync(p, "utf8"));
+  let firstPath: string | undefined = args?.diffs[0];
+  while (!args) {
     const picked = await vscode.window.showOpenDialog({
       title: diffs.length ? `Attempt ${diffs.length + 1} diff (Cancel to start verifying)` : "Attempt 1 diff",
       filters: { Diff: ["diff", "patch"] },
@@ -147,10 +162,11 @@ async function verifyDiffFiles(): Promise<void> {
   if (!diffs.length || !firstPath) return;
   const taskFile = join(dirname(firstPath), "task.json");
   let task = existsSync(taskFile) ? (JSON.parse(readFileSync(taskFile, "utf8")) as { task?: string }).task : undefined;
-  task = await vscode.window.showInputBox({ title: "Task for this diff", value: task ?? "", ignoreFocusOut: true });
+  task = args?.task ?? task;
+  if (!args) task = await vscode.window.showInputBox({ title: "Task for this diff", value: task ?? "", ignoreFocusOut: true });
   if (!task || !(await ensureVerifier())) return;
   await runVerified({
-    ...runOptions(),
+    ...runOptions(task),
     mode: "diff",
     title: diffs.length > 1 ? "PCP: Repair loop (replayed)" : "PCP: Verify diff",
     task,
@@ -198,14 +214,47 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("pcp.checkHealth", () => refresh(true)),
     vscode.commands.registerCommand("pcp.runAgentTask", guard(runAgentTask)),
     vscode.commands.registerCommand("pcp.inlineEdit", guard(inlineEdit)),
-    vscode.commands.registerCommand("pcp.verifyDiffFile", guard(verifyDiffFiles)),
+    vscode.commands.registerCommand("pcp.verifyDiffFile", (args?: VerifyDiffArgs) => guard(() => verifyDiffFiles(args))()),
     vscode.commands.registerCommand("pcp.cancel", () => {
       if (!cancelCurrent()) void vscode.window.showInformationMessage("PCP: nothing is running.");
     }),
     vscode.commands.registerCommand("pcp.showContext", guard(showContext)),
     vscode.commands.registerCommand("pcp.showResilience", () => ResiliencePanel.show(client)),
+    vscode.commands.registerCommand("pcp.showAuditLog", () => {
+      if (!mcp) return void vscode.window.showWarningMessage("PCP: the MCP tool server is still starting.");
+      AuditPanel.show(mcp.audit, mcp.url);
+    }),
+    vscode.commands.registerCommand("pcp.copyMcpUrl", async () => {
+      const url = mcp?.url();
+      if (!url) return void vscode.window.showWarningMessage("PCP: the MCP tool server is not running.");
+      await vscode.env.clipboard.writeText(url);
+      void vscode.window.showInformationMessage(`Copied ${url}. In TrueForge: Settings > Connectors > Add MCP Server, name it "pcp-editor".`);
+    }),
   );
+
+  void startMcpHost({
+    context,
+    root: () => repoRoot(vscode.window.activeTextEditor?.document.uri),
+    client,
+    task: () => lastTask,
+    activeReview: () => hooks.activeReview,
+  }).then((host) => {
+    mcp = host;
+    hooks.approveTool = host.approveTool;
+    hooks.writeHunk = host.writeHunk;
+    context.subscriptions.push({ dispose: () => void host.dispose() });
+  });
   void refresh(false);
+  // Demo/recording hook: PCP_AUTORUN='{"command":"pcp.verifyDiffFile","args":{...}}' runs one command on start.
+  const autorun = process.env.PCP_AUTORUN;
+  if (autorun) {
+    try {
+      const { command, args } = JSON.parse(autorun) as { command: string; args?: unknown };
+      if (command.startsWith("pcp.")) setTimeout(() => void vscode.commands.executeCommand(command, args), 1500);
+    } catch (e) {
+      void vscode.window.showErrorMessage(`PCP_AUTORUN is not valid JSON: ${(e as Error).message}`);
+    }
+  }
   const timer = setInterval(() => void refresh(false), 15000);
   context.subscriptions.push({ dispose: () => clearInterval(timer) });
 }
