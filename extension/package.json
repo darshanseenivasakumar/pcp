@@ -19,6 +19,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "pcp.demo",
+        "title": "PCP: Demo\u2026"
+      },
+      {
         "command": "pcp.runAgentTask",
         "title": "PCP: Run Agent Task (verified)"
       },
@@ -152,6 +156,11 @@
         "pcp.contextTokenBudget": {
           "type": "number",
           "default": 8000
+        },
+        "pcp.demoTasksDir": {
+          "type": "string",
+          "default": "",
+          "description": "The verifier's bench/tasks folder (A/, B/ with task.json and .diff files) for PCP: Demo\u2026"
         }
       }
     }

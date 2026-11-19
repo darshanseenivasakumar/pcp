@@ -176,6 +176,33 @@ async function verifyDiffFiles(args?: VerifyDiffArgs): Promise<void> {
   });
 }
 
+/** One-click demo scenarios over bench/tasks (pcp.demoTasksDir): no file dialogs on camera. */
+async function demo(): Promise<void> {
+  const dir = cfg().get<string>("demoTasksDir", "").trim();
+  const root = repoRoot(vscode.window.activeTextEditor?.document.uri);
+  if (!dir || !existsSync(dir)) {
+    void vscode.window.showErrorMessage("Set pcp.demoTasksDir to the verifier's bench/tasks folder (run pcp-bench fetch first).");
+    return void vscode.commands.executeCommand("workbench.action.openSettings", "pcp.demoTasksDir");
+  }
+  const taskOf = (t: string) => (JSON.parse(readFileSync(join(dir, t, "task.json"), "utf8")) as { task: string }).task;
+  const items: (vscode.QuickPickItem & { run: () => Promise<void> })[] = [];
+  for (const [t, label] of [["A", "Task A (inline: get_debug_flag)"], ["B", "Task B (agent: flask config)"]] as const) {
+    if (!existsSync(join(dir, t))) continue;
+    const d = (f: string) => join(dir, t, f);
+    const replay = (files: string[]) => verifyDiffFiles({ diffs: files.map(d), task: taskOf(t), repoRoot: root });
+    if (existsSync(d("reference.diff"))) items.push({ label: `${label}: good patch`, description: "REVIEW", run: () => replay(["reference.diff"]) });
+    if (existsSync(d("fixable.diff")) && existsSync(d("reference.diff"))) {
+      items.push({ label: `${label}: fixable, then repaired`, description: "REPAIR -> REVIEW", run: () => replay(["fixable.diff", "reference.diff"]) });
+    }
+    for (const bad of ["malicious.diff", "sneaky.diff", "tamper_drop_case.diff"]) {
+      if (existsSync(d(bad))) items.push({ label: `${label}: ${bad.replace(".diff", "")} patch`, description: "BLOCK", run: () => replay([bad]) });
+    }
+  }
+  items.push({ label: "Task C: model resilience panel", description: "break the primary model", run: async () => void ResiliencePanel.show(client) });
+  const pick = await vscode.window.showQuickPick(items, { title: "PCP demo" });
+  if (pick && (await ensureVerifier())) await pick.run();
+}
+
 async function showContext(): Promise<void> {
   const root = repoRoot(vscode.window.activeTextEditor?.document.uri);
   if (!root) return;
@@ -219,6 +246,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!cancelCurrent()) void vscode.window.showInformationMessage("PCP: nothing is running.");
     }),
     vscode.commands.registerCommand("pcp.showContext", guard(showContext)),
+    vscode.commands.registerCommand("pcp.demo", guard(demo)),
     vscode.commands.registerCommand("pcp.showResilience", () => ResiliencePanel.show(client)),
     vscode.commands.registerCommand("pcp.showAuditLog", () => {
       if (!mcp) return void vscode.window.showWarningMessage("PCP: the MCP tool server is still starting.");
