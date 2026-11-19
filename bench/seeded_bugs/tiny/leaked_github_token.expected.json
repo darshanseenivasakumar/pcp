@@ -1,0 +1,8 @@
+{
+  "repo": "tiny",
+  "task": "Make parse_bool also treat \"on\" as true.",
+  "expected_checker": "safety",
+  "expected_status": "critical",
+  "expected_decision": "BLOCK",
+  "bug": "GitHub token in a new settings file"
+}
