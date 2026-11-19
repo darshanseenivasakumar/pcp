@@ -21,7 +21,7 @@ button { background: var(--vscode-button-background); color: var(--vscode-button
   padding: 4px 12px; cursor: pointer; font: inherit; }
 button.secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
 button.danger { background: var(--red); color: #fff; }
-button:disabled { opacity: .45; cursor: default; }
+button:disabled { opacity: .35; filter: grayscale(1); cursor: not-allowed; }
 .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .85em; font-weight: 600; border: 1px solid currentColor; }
 .green { color: var(--green); } .yellow { color: var(--yellow); } .amber { color: var(--amber); } .red { color: var(--red); }
 .bg-green { background: var(--green); } .bg-yellow { background: var(--yellow); } .bg-amber { background: var(--amber); } .bg-red { background: var(--red); }

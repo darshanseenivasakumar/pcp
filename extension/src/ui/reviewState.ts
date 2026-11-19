@@ -29,6 +29,21 @@ export interface TestView {
   id: string;
   outcome?: TestOutcome; // on the patched code
   baseline?: TestOutcome;
+  /** Parametrized cases folded into this id (pytest `name[case]`). */
+  cases?: number;
+}
+
+/**
+ * Outcome of a test id in a run. The verifier may cite a parametrized test by its base name
+ * while the run lists each case (`test_x[a]`, `test_x[b]`): fold the cases (any failure wins).
+ */
+export function outcomeOf(tests: Record<string, TestOutcome> | undefined, id: string): { outcome?: TestOutcome; cases: number } {
+  if (!tests) return { cases: 0 };
+  if (tests[id]) return { outcome: tests[id], cases: 1 };
+  const cases = Object.entries(tests).filter(([k]) => k.startsWith(`${id}[`)).map(([, v]) => v);
+  if (!cases.length) return { cases: 0 };
+  const rank: TestOutcome[] = ["error", "failed", "skipped", "passed"];
+  return { outcome: rank.find((r) => cases.includes(r)), cases: cases.length };
 }
 
 export interface HunkView {
@@ -199,7 +214,10 @@ export function applyVerdict(s: ReviewViewState, v: Verdict, diff: ParsedDiff): 
       lines: h.lines,
       state: "pending",
       result: e?.result ?? "untested",
-      tests: (e?.tests ?? []).map((id) => ({ id, outcome: p?.patched?.tests?.[id], baseline: p?.baseline?.tests?.[id] })),
+      tests: (e?.tests ?? []).map((id) => {
+        const now = outcomeOf(p?.patched?.tests, id);
+        return { id, outcome: now.outcome, baseline: outcomeOf(p?.baseline?.tests, id).outcome, cases: now.cases };
+      }),
       findings: (e?.findings ?? []).map((id) => allFindings.get(id)).filter((f): f is FindingView => !!f),
     };
   });

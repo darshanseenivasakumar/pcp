@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import type { PcpEvent, Verdict } from "../src/contracts";
 import { parseUnifiedDiff } from "../src/core/diff";
-import { applyEvent, applyVerdict, badgeText, initialState, startAttempt } from "../src/ui/reviewState";
+import { applyEvent, applyVerdict, badgeText, initialState, outcomeOf, startAttempt } from "../src/ui/reviewState";
 
 const EX = join(__dirname, "..", "..", "contracts", "examples");
 const load = <T>(f: string) => JSON.parse(readFileSync(join(EX, f), "utf8")) as T;
@@ -41,5 +41,14 @@ describe("review view state", () => {
     expect(s.canAccept).toBe(false);
     applyVerdict(s, load<Verdict>("verdict_repair.json"), parseUnifiedDiff(req.diff, { recount: true }));
     expect(s.canAccept).toBe(false);
+  });
+});
+
+describe("outcomeOf", () => {
+  it("folds parametrized cases into the base test id; any failure wins", () => {
+    const tests = { "t.py::test_x[a]": "passed", "t.py::test_x[b]": "failed", "t.py::test_y": "passed" } as const;
+    expect(outcomeOf(tests, "t.py::test_x")).toEqual({ outcome: "failed", cases: 2 });
+    expect(outcomeOf(tests, "t.py::test_y")).toEqual({ outcome: "passed", cases: 1 });
+    expect(outcomeOf(tests, "t.py::test_z")).toEqual({ cases: 0 });
   });
 });
