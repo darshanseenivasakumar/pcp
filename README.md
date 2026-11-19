@@ -56,4 +56,16 @@ A failing primary (HTTP 503) is retried once (300 ms backoff) and then the backu
 
 ## Person 2: extension
 
-_Person 2 fills this in._
+**Run it:** `cd extension && npm ci && npm run build`, then F5 on `extension/` (or `scripts/dev.sh`, which also opens VS Code with the extension on `bench/repos/flask`). Full guide: [`extension/README.md`](extension/README.md).
+
+- **Agent loop** (`src/agent/`): task + context → TrueForge (or the `/llm/complete` gateway, or replayed `.diff` files) → `POST /verify` → REPAIR feeds `repair_instructions` back with `attempt`/`previous_patch_id` (max 3) → REVIEW opens the panel → BLOCK shows `decision_reason`. The loop never writes files.
+- **Review panel** (B2, A3): live stages from SSE (de-duplicated by id, reconnects, falls back to polling), Cancel (`/cancel`, files untouched), score badge (green proven / yellow unproven / amber repair / red block), score history, `summary_md`, and the diff split into `h1..hN` with each hunk's tests (old vs new outcome) and findings. **Accept writes exactly that hunk; Reject writes nothing.**
+- **Inline edit** (A1, `Ctrl+Alt+K` on a selection) and **agent mode** (A2) commands; **PCP: Demo…** runs the `bench/tasks` scenarios in one click.
+- **Context panel** (B1): symbol + import-graph retrieval in a token budget, each file with *why* ("defines `get_debug_flag`", "tests `helpers.py`", "path matches `cli`").
+- **Resilience panel** (B3): polls `/llm/status`; Break/Hang/Restore primary via `/llm/simulate`; shows which model answered and the failover time.
+- **MCP tools** (B4) at `127.0.0.1:8766/mcp` for TrueForge: tier 0 read (auto), 1 shadow apply (auto, in memory), 2 `run_tests`/`run_command` (allow-list `pytest`, `git diff`, else approval; TrueForge approvals go through the same gate), 3 `write_file` (accepted hunks only). Every call is in the audit log.
+- Every verifier message is validated against `contracts/schemas` (ajv) plus the Verdict invariants; the webviews never make HTTP calls.
+
+**Tests:** `cd extension && npm run lint && npm test`, which runs 132 tests with no verifier needed (mock server + temp git repos): hunk parsing, accept-only-that-hunk / reject-writes-nothing via `git status`, cancel leaves `git status` clean, repair loop stops at 3, tier ≥ 2 approval and allow-list, offline/timeout messages, SSE reconnect, TrueForge approval flow, MCP over HTTP. `PCP_REAL_URL=http://127.0.0.1:8765 npx vitest run test/real-server.test.ts` runs good/fixable/malicious/failover against the real verifier.
+
+**Write-up section and screenshots:** [`extension/docs/WRITEUP-editor.md`](extension/docs/WRITEUP-editor.md). **Demo script:** [`extension/docs/DEMO.md`](extension/docs/DEMO.md).
