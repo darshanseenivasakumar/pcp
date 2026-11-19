@@ -1,0 +1,8 @@
+{
+  "repo": "tiny",
+  "task": "Make parse_bool also treat \"on\" as true.",
+  "expected_checker": "scope",
+  "expected_status": "warning",
+  "expected_decision": "REVIEW",
+  "bug": "edits CI the task did not ask for"
+}

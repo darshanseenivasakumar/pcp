@@ -1,0 +1,58 @@
+diff --git a/src/tiny/mathx.py b/src/tiny/mathx.py
+index 5e57575..209e154 100644
+--- a/src/tiny/mathx.py
++++ b/src/tiny/mathx.py
+@@ -1,25 +1,24 @@
+-"""Three small functions used as PCP's test fixture."""
++"""Three small functions used as PCP's test fixture (rewritten)."""
+ 
+-TRUE_VALUES = {"1", "true", "yes"}
++ACCEPTED = frozenset({"1", "true", "yes", "on"})
+ 
+ 
+-def clamp(x: float, lo: float, hi: float) -> float:
+-    """Limit x to the range [lo, hi]."""
+-    if lo > hi:
++def clamp(value: float, low: float, high: float) -> float:
++    """Limit value to the closed range [low, high]."""
++    if low > high:
+         raise ValueError("lo must be <= hi")
+-    return max(lo, min(x, hi))
++    if value < low:
++        return low
++    if value > high:
++        return high
++    return value
+ 
+ 
+-def parse_bool(value: str | None) -> bool:
++def parse_bool(text: str | None) -> bool:
+     """Interpret a config string as a boolean."""
+-    if value is None:
+-        return False
+-    return value.strip().lower() in TRUE_VALUES
++    return text is not None and text.strip().lower() in ACCEPTED
+ 
+ 
+-def safe_div(a: float, b: float, default: float = 0.0) -> float:
+-    """Divide a by b, returning default when b is zero."""
+-    try:
+-        return a / b
+-    except ZeroDivisionError:
+-        return default
++def safe_div(numerator: float, denominator: float, default: float = 0.0) -> float:
++    """Divide, returning default when the denominator is zero."""
++    return default if denominator == 0 else numerator / denominator
+diff --git a/tests/test_mathx.py b/tests/test_mathx.py
+index abd479c..a7bf321 100644
+--- a/tests/test_mathx.py
++++ b/tests/test_mathx.py
+@@ -31,3 +31,8 @@ def test_safe_div():
+     assert safe_div(6, 3) == 2
+     assert safe_div(1, 0) == 0.0
+     assert safe_div(1, 0, default=-1) == -1
++
++
++@pytest.mark.parametrize("value", ["on", "ON", " On "])
++def test_parse_bool_on(value):
++    assert parse_bool(value) is True
