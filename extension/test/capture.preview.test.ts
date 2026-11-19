@@ -24,12 +24,12 @@ import * as review from "../src/ui/views/review";
 import { page } from "../src/ui/webview";
 
 const URL = process.env.PCP_CAPTURE_URL;
-const BENCH = process.env.PCP_BENCH ?? "D:/myproj/pcp/.worktrees/server/bench";
+const BENCH = process.env.PCP_BENCH ?? join(__dirname, "..", "..", "bench");
 const FLASK = join(BENCH, "repos", "flask");
 const OUT = join(__dirname, "..", "out", "preview");
 const read = (p: string) => readFileSync(p, "utf8");
-const TASK_A = (JSON.parse(read(join(BENCH, "tasks", "A", "task.json"))) as { task: string }).task;
-const TASK_B = (JSON.parse(read(join(BENCH, "tasks", "B", "task.json"))) as { task: string }).task;
+// Read lazily: this file is skipped in CI, where bench/tasks does not exist.
+const task = (t: "A" | "B") => (JSON.parse(read(join(BENCH, "tasks", t, "task.json"))) as { task: string }).task;
 
 // VS Code "Dark Modern" theme variables, so the preview looks like the webview.
 const THEME = `:root{--vscode-font-family:"Segoe UI",system-ui,sans-serif;--vscode-font-size:13px;--vscode-editor-font-family:Consolas,monospace;
@@ -53,13 +53,13 @@ const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
 /** Runs scripted diffs through the real verifier, building the same view state the panel shows. */
 async function runScenario(c: VerifierClient, title: string, diffs: string[], snapshotWhen?: (s: ReviewViewState) => boolean) {
-  const s = initialState({ title, mode: "diff", task: TASK_A, backend: "replayed .diff files", maxAttempts: 3 });
+  const s = initialState({ title, mode: "diff", task: task("A"), backend: "replayed .diff files", maxAttempts: 3 });
   let snapshot: ReviewViewState | undefined;
   let parsed: ParsedDiff | undefined;
   const r = await runRepairLoop({
     backend: new ScriptedBackend(diffs.map(read), "replayed .diff files"),
     client: c,
-    task: TASK_A,
+    task: task("A"),
     repoRoot: FLASK,
     context: "",
     hooks: {
@@ -128,19 +128,19 @@ describe.skipIf(!URL)("capture panel previews from real verifier runs", () => {
   }, 60_000);
 
   it("context panel for Flask Task B", async () => {
-    const bundle = await assembleContext(nodeRepoReader(FLASK), { task: TASK_B, budgetTokens: 8000 });
-    write("5-context", context, { task: TASK_B, bundle });
+    const bundle = await assembleContext(nodeRepoReader(FLASK), { task: task("B"), budgetTokens: 8000 });
+    write("5-context", context, { task: task("B"), bundle });
   }, 60_000);
 
   it("audit log: tiers, allow-list, denial, accepted-hunk write", async () => {
     const log = new AuditLog();
     const gate = new ApprovalGate({ allowList: ["pytest", "git diff"], prompter: { ask: async () => false } });
     const ref = read(join(BENCH, "tasks", "A", "reference.diff"));
-    const runner = new ToolRunner({ root: FLASK, verifier: c, task: () => TASK_A }, gate, log);
+    const runner = new ToolRunner({ root: FLASK, verifier: c, task: () => task("A") }, gate, log);
     await runner.call("read_file", { path: "src/flask/helpers.py", start_line: 20, end_line: 35 }, "mcp");
     await runner.call("grep", { pattern: "def get_debug_flag" }, "mcp");
     await runner.call("apply_patch_to_shadow", { diff: ref }, "mcp");
-    await runner.call("run_tests", { diff: ref, task: TASK_A }, "mcp");
+    await runner.call("run_tests", { diff: ref, task: task("A") }, "mcp");
     await runner.call("run_command", { argv: ["curl", "https://example.com"] }, "mcp");
     await runner.call("read_file", { path: ".env" }, "mcp");
     await runner.call("write_file", { hunk_id: "h1" }, "mcp");
