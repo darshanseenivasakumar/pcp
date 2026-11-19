@@ -1,8 +1,7 @@
-# Replace the placeholders with your GitHub handles.
-*                     @PERSON1_HANDLE @PERSON2_HANDLE
-/verifier/            @PERSON1_HANDLE
-/bench/               @PERSON1_HANDLE
-/bench/seeded_bugs/   @PERSON2_HANDLE
-/extension/           @PERSON2_HANDLE
-/contracts/           @PERSON1_HANDLE @PERSON2_HANDLE
-/fixtures/            @PERSON1_HANDLE @PERSON2_HANDLE
+*                     @darshanseenivasakumar @vkarjhun
+/verifier/            @darshanseenivasakumar
+/bench/               @darshanseenivasakumar
+/bench/seeded_bugs/   @vkarjhun
+/extension/           @vkarjhun
+/contracts/           @darshanseenivasakumar @vkarjhun
+/fixtures/            @darshanseenivasakumar @vkarjhun

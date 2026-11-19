@@ -1,0 +1,12 @@
+# PCP test sandbox: runs a patch's tests with --network none.
+# Build: docker build -t pcp-sandbox:py312 -f verifier/docker/Dockerfile.sandbox verifier/docker
+# The repo under test is mounted at /sandbox/repo and put first on PYTHONPATH,
+# so the *patched* source is imported, never an installed copy.
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+COPY requirements-sandbox.txt /tmp/requirements-sandbox.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-sandbox.txt \
+    && useradd --create-home --uid 1000 sandbox
+USER sandbox
+WORKDIR /sandbox/repo
