@@ -1,0 +1,17 @@
+{
+  "configured": true,
+  "models": [
+    {
+      "role": "primary",
+      "name": "gpt-4o",
+      "simulated": "fail"
+    },
+    {
+      "role": "secondary",
+      "name": "claude-sonnet-5-5",
+      "simulated": "ok"
+    }
+  ],
+  "last_model_used": "secondary:claude-sonnet-5-5",
+  "last_failover_ms": 312
+}
