@@ -5,6 +5,8 @@ import type {
   Health,
   LLMRequest,
   LLMResponse,
+  LLMSimulateRequest,
+  LLMStatus,
   PcpEvent,
   Verdict,
   VerifyRequest,
@@ -68,7 +70,7 @@ export class CancelledError extends Error {
 const PENDING = Symbol("pending");
 
 /** SSE `event:` names that carry a PcpEvent. Anything else on the stream is ignored. */
-const EVENT_NAMES = new Set(["message", "pcp", "event"]);
+const EVENT_NAMES = new Set(["proof", "checks", "validate", "verdict", "message", "pcp", "event"]);
 
 function isTerminal(e: PcpEvent): boolean {
   return e.stage === "verdict" && (e.status === "done" || e.status === "failed");
@@ -130,6 +132,17 @@ export class VerifierClient {
     return this.json("POST", "/llm/complete", req, "llm_response", signal, this.llmTimeoutMs);
   }
 
+  /** Task C: which models are configured, which one answered last, and the last failover time. */
+  llmStatus(signal?: AbortSignal): Promise<LLMStatus> {
+    return this.json("GET", "/llm/status", undefined, "llm_status", signal);
+  }
+
+  /** Task C demo switch: make the primary model fail / hang / recover, live. */
+  llmSimulate(req: LLMSimulateRequest, signal?: AbortSignal): Promise<LLMStatus> {
+    parseContract("llm_simulate_request", req);
+    return this.json("POST", "/llm/simulate", req, "llm_status", signal);
+  }
+
   /** Polls GET /verify/{id} until the verdict exists. Used when SSE is unavailable. */
   async waitForVerdict(
     patchId: string,
@@ -145,14 +158,16 @@ export class VerifierClient {
   }
 
   /**
-   * Streams progress events. Reconnects with Last-Event-ID when the connection drops before
-   * the verdict event; if the server does not send ids, already-seen events are skipped by
-   * position. Ends after the terminal verdict event, or after `sseMaxRetries` failed reconnects
-   * (callers then fall back to `waitForVerdict`).
+   * Streams progress events. Reconnects (sending Last-Event-ID) when the connection drops before
+   * the verdict event. The verifier replays the whole run to every new subscriber, so events
+   * are de-duplicated by their numeric SSE id (or by position if a server sends no ids).
+   * Ends after the terminal verdict event, or after `sseMaxRetries` failed reconnects (callers
+   * then fall back to `waitForVerdict`).
    */
   async *events(patchId: string, signal?: AbortSignal): AsyncGenerator<PcpEvent> {
     const parser = new SseParser();
     let seen = 0;
+    let maxId = -Infinity;
     let failures = 0;
     for (;;) {
       if (signal?.aborted) throw new CancelledError();
@@ -168,16 +183,19 @@ export class VerifierClient {
         if (!res.ok || !res.body) {
           throw new VerifierHttpError(res.status, await res.text().catch(() => ""), "events");
         }
-        const usesIds = () => parser.lastEventId !== undefined;
         const decoder = new TextDecoder();
         const reader = res.body.getReader();
-        let skip = usesIds() ? 0 : seen; // id-less server replays history: skip what we have
+        let skip = seen; // only used for id-less events
         for (;;) {
           const { value, done } = await reader.read();
           if (done) break;
           for (const msg of parser.feed(decoder.decode(value, { stream: true }))) {
             if (!EVENT_NAMES.has(msg.event)) continue; // e.g. "ping" keep-alives
-            if (skip > 0) {
+            const id = msg.id !== undefined && /^\d+$/.test(msg.id) ? Number(msg.id) : undefined;
+            if (id !== undefined) {
+              if (id <= maxId) continue; // replayed on reconnect
+              maxId = id;
+            } else if (skip > 0) {
               skip--;
               continue;
             }
@@ -205,7 +223,7 @@ export class VerifierClient {
   }
 
   // ------------------------------------------------------------------ internals
-  private async json<K extends "health" | "verify_response" | "llm_response">(
+  private async json<K extends "health" | "verify_response" | "llm_response" | "llm_status">(
     method: string,
     path: string,
     body: unknown,

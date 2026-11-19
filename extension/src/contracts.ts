@@ -9,6 +9,8 @@ import type {
   Health,
   LLMRequest,
   LLMResponse,
+  LLMSimulateRequest,
+  LLMStatus,
   PcpEvent,
   Verdict,
   VerifyRequest,
@@ -20,6 +22,8 @@ import eventSchema from "../../contracts/schemas/event.schema.json";
 import healthSchema from "../../contracts/schemas/health.schema.json";
 import llmRequestSchema from "../../contracts/schemas/llm_request.schema.json";
 import llmResponseSchema from "../../contracts/schemas/llm_response.schema.json";
+import llmSimulateRequestSchema from "../../contracts/schemas/llm_simulate_request.schema.json";
+import llmStatusSchema from "../../contracts/schemas/llm_status.schema.json";
 import verdictSchema from "../../contracts/schemas/verdict.schema.json";
 import verifyRequestSchema from "../../contracts/schemas/verify_request.schema.json";
 import verifyResponseSchema from "../../contracts/schemas/verify_response.schema.json";
@@ -31,6 +35,8 @@ export interface ContractMap {
   health: Health;
   llm_request: LLMRequest;
   llm_response: LLMResponse;
+  llm_simulate_request: LLMSimulateRequest;
+  llm_status: LLMStatus;
   verdict: Verdict;
   verify_request: VerifyRequest;
   verify_response: VerifyResponse;
@@ -55,6 +61,8 @@ const schemas: Record<ContractName, object> = {
   health: healthSchema,
   llm_request: llmRequestSchema,
   llm_response: llmResponseSchema,
+  llm_simulate_request: llmSimulateRequestSchema,
+  llm_status: llmStatusSchema,
   verdict: verdictSchema,
   verify_request: verifyRequestSchema,
   verify_response: verifyResponseSchema,

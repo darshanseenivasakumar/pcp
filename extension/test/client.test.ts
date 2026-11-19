@@ -88,6 +88,21 @@ describe("VerifierClient against the mock server", () => {
       if (seen.length === 1) await c.cancel(patch_id);
     }
     expect(seen.at(-1)).toMatchObject({ stage: "verdict", status: "failed" });
+    const v = await c.waitForVerdict(patch_id, { pollMs: 5 });
+    expect(v.decision).toBe("BLOCK");
+    expect(v.decision_reason).toMatch(/cancelled/);
+  });
+
+  it("/llm/simulate breaks the primary live and /llm/status shows who answered", async () => {
+    const c = await setup({ primaryFailMs: 10 });
+    expect((await c.llmStatus()).models?.[0]?.simulated).toBe("ok");
+    const broken = await c.llmSimulate({ primary: "fail" });
+    expect(broken.models?.[0]?.simulated).toBe("fail");
+    const r = await c.llmComplete({ messages: [{ role: "user", content: "ping" }], purpose: "probe" });
+    expect(r.failed_over).toBe(true);
+    const s = await c.llmStatus();
+    expect(s.last_model_used).toBe(r.model_used);
+    expect(s.last_failover_ms).toBe(r.failover_ms);
   });
 
   it("an aborted signal stops the stream with CancelledError", async () => {

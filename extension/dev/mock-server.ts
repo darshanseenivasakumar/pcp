@@ -8,7 +8,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { dirname, join, resolve } from "node:path";
 
-import type { Health, LLMResponse, PcpEvent, Verdict } from "../src/contracts";
+import type { Health, LLMResponse, LLMStatus, PcpEvent, SimulateMode, Verdict } from "../src/contracts";
 import { parseContract } from "../src/contracts";
 
 import eventsExample from "../../contracts/examples/events_stream.json";
@@ -117,6 +117,32 @@ function buildVerdict(
   return parseContract("verdict", v);
 }
 
+/** Mirrors pipeline.cancelled_verdict on the real verifier: BLOCK, nothing written. */
+function cancelledVerdict(run: MockRun): Verdict {
+  return parseContract("verdict", {
+    patch_id: run.patchId,
+    score: 50,
+    decision: "BLOCK",
+    decision_reason: "verification was cancelled by the user; nothing was written",
+    unproven: true,
+    attempt: run.request.attempt,
+    score_history: [...run.verdict.score_history.slice(0, -1), 50],
+    checks: (["proof", "safety", "coverage", "scope"] as const).map((checker) => ({
+      checker,
+      risk_modifier: 50,
+      status: "warning",
+      findings: [],
+      recommended_action: `${checker} was cancelled`,
+    })),
+    proof: null,
+    hunk_evidence: {},
+    repair_instructions: null,
+    summary_md: "**Cancelled.** Verification stopped; the sandbox was killed and no files were changed.",
+    big_rewrite_approved: false,
+    created_at: new Date().toISOString(),
+  });
+}
+
 function buildEvents(patchId: string, v: Verdict): PcpEvent[] {
   const events = clone(eventsExample as PcpEvent[]).map((e) => ({ ...e, patch_id: patchId }));
   const last = events[events.length - 1];
@@ -152,6 +178,18 @@ export async function startMockServer(opts: MockOptions = {}): Promise<MockServe
   const runs = new Map<string, MockRun>();
   const llmCalls: MockServer["llmCalls"] = [];
   let sseConnections = 0;
+  let simulated: SimulateMode = opts.primaryDown ? "fail" : "ok";
+  let lastModelUsed: string | null = null;
+  let lastFailoverMs: number | null = null;
+  const llmStatus = (): LLMStatus => ({
+    configured: true,
+    models: [
+      { role: "primary", name: "mock-model", simulated },
+      { role: "secondary", name: "mock-backup", simulated: "ok" },
+    ],
+    last_model_used: lastModelUsed,
+    last_failover_ms: lastFailoverMs,
+  });
 
   function emitNext(run: MockRun): void {
     const next = run.planned[run.emitted.length];
@@ -195,8 +233,9 @@ export async function startMockServer(opts: MockOptions = {}): Promise<MockServe
       if (!run) return send(res, 404, { detail: "unknown patch_id" });
 
       if (req.method === "GET" && parts.length === 2) {
-        if (run.cancelled) return send(res, 409, { detail: "cancelled" });
-        if (run.emitted.length < run.planned.length) return send(res, 202, { status: "running" });
+        if (!run.cancelled && run.emitted.length < run.planned.length) {
+          return send(res, 202, { status: "running" });
+        }
         if (opts.invalidVerdict) return send(res, 200, { ...run.verdict, decision: "MAYBE" });
         return send(res, 200, run.verdict);
       }
@@ -210,15 +249,17 @@ export async function startMockServer(opts: MockOptions = {}): Promise<MockServe
             { patch_id: run.patchId, stage, status: "failed", message: "Cancelled by user; sandbox killed", data: {} },
             { patch_id: run.patchId, stage: "verdict", status: "failed", message: "Cancelled", data: { cancelled: true } },
           );
+          run.verdict = cancelledVerdict(run);
           for (const l of run.listeners) l();
+          return send(res, 200, { patch_id: run.patchId, cancelled: true });
         }
-        return send(res, 200, { patch_id: run.patchId, cancelled: run.cancelled });
+        return send(res, 200, { patch_id: run.patchId, cancelled: false, reason: "already finished" });
       }
 
       if (req.method === "GET" && parts[2] === "events") {
         const connection = ++sseConnections;
-        const lastId = Number(req.headers["last-event-id"] ?? -1);
-        let next = Number.isFinite(lastId) ? lastId + 1 : 0;
+        // Like the real verifier: every subscriber gets a full replay; ids are 1-based.
+        let next = 0;
         let sentThisConnection = 0;
         res.writeHead(200, {
           "content-type": "text/event-stream",
@@ -229,7 +270,7 @@ export async function startMockServer(opts: MockOptions = {}): Promise<MockServe
         const flush = () => {
           while (next < run.emitted.length) {
             const ev = run.emitted[next]!;
-            res.write(`id: ${next}\ndata: ${JSON.stringify(ev)}\n\n`);
+            res.write(`event: ${ev.stage}\nid: ${next + 1}\ndata: ${JSON.stringify(ev)}\n\n`);
             next++;
             sentThisConnection++;
             if (opts.dropSseAfter && connection === 1 && sentThisConnection >= opts.dropSseAfter) {
@@ -251,22 +292,34 @@ export async function startMockServer(opts: MockOptions = {}): Promise<MockServe
       }
     }
 
+    if (req.method === "GET" && url.pathname === "/llm/status") {
+      return send(res, 200, parseContract("llm_status", llmStatus()));
+    }
+
+    if (req.method === "POST" && url.pathname === "/llm/simulate") {
+      simulated = parseContract("llm_simulate_request", await readBody(req)).primary;
+      return send(res, 200, parseContract("llm_status", llmStatus()));
+    }
+
     if (req.method === "POST" && url.pathname === "/llm/complete") {
       const body = parseContract("llm_request", await readBody(req));
       const started = Date.now();
       const errors: string[] = [];
-      if (opts.primaryDown) {
+      const down = simulated !== "ok";
+      if (down) {
         await sleep(opts.primaryFailMs ?? 300);
         errors.push("primary: HTTP 503 Service Unavailable (simulated)", "primary retry: HTTP 503 (simulated)");
       }
       const out: LLMResponse = {
         text: mockCompletion(body.purpose, body.messages.map((m) => m.content).join("\n"), repoRoot),
-        model_used: opts.primaryDown ? "secondary:mock-backup" : "primary:mock-model",
-        failover_ms: opts.primaryDown ? Date.now() - started : 0,
-        failed_over: !!opts.primaryDown,
+        model_used: down ? "secondary:mock-backup" : "primary:mock-model",
+        failover_ms: down ? Date.now() - started : 0,
+        failed_over: down,
         errors,
       };
-      llmCalls.push({ purpose: body.purpose, failedOver: !!opts.primaryDown });
+      lastModelUsed = out.model_used;
+      lastFailoverMs = out.failover_ms;
+      llmCalls.push({ purpose: body.purpose, failedOver: down });
       return send(res, 200, parseContract("llm_response", out));
     }
 

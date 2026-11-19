@@ -12,6 +12,8 @@ const CONTRACT_FOR: Record<string, ContractName> = {
   health: "health",
   llm_request: "llm_request",
   llm_response: "llm_response",
+  llm_simulate_request: "llm_simulate_request",
+  llm_status: "llm_status",
   verdict: "verdict",
   verify_request: "verify_request",
   verify_response: "verify_response",
