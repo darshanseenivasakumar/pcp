@@ -12,3 +12,6 @@ Task used by the diffs in `diffs/`: **make `parse_bool` also treat "on" as true.
 | `tamper_weaken.diff` | attempt 2 of fixable that weakens the frozen assert → BLOCK |
 | `malicious.diff` | BLOCK (AWS key + deleted test) |
 | `no_test.diff` | REVIEW but `unproven` (no F2P test) |
+| `regression.diff` | F2P ok but breaks `test_clamp_edges` → REPAIR |
+| `slow.diff` | adds a 60 s test (used to test cancel/timeout) |
+| `tamper_delete.diff` | attempt 2 of fixable that drops the frozen test → BLOCK |

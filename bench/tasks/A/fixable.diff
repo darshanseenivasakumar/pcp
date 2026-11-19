@@ -1,0 +1,28 @@
+diff --git a/src/flask/helpers.py b/src/flask/helpers.py
+index 5d412c9..a834f2b 100644
+--- a/src/flask/helpers.py
++++ b/src/flask/helpers.py
+@@ -30,7 +30,7 @@ def get_debug_flag() -> bool:
+     :envvar:`FLASK_DEBUG` environment variable. The default is ``False``.
+     """
+     val = os.environ.get("FLASK_DEBUG")
+-    return bool(val and val.lower() not in {"0", "false", "no"})
++    return bool(val and val.lower() not in {"0", "false", "no", "off"})
+ 
+ 
+ def get_load_dotenv(default: bool = True) -> bool:
+diff --git a/tests/test_helpers.py b/tests/test_helpers.py
+index efd22aa..0a9ab53 100644
+--- a/tests/test_helpers.py
++++ b/tests/test_helpers.py
+@@ -338,6 +338,10 @@ class TestHelpers:
+             ("0", False),
+             ("False", False),
+             ("No", False),
++            ("off", False),
++            ("OFF", False),
++            ("n", False),
++            ("N", False),
+             ("True", True),
+         ],
+     )
