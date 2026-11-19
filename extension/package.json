@@ -1,0 +1,192 @@
+{
+  "name": "pcp-extension",
+  "displayName": "Proof-Carrying Patch",
+  "description": "Verify every coding-agent patch with tests and four checkers before it touches your files.",
+  "version": "0.1.0",
+  "publisher": "pcp-team",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "pcp.demo",
+        "title": "PCP: Demo\u2026"
+      },
+      {
+        "command": "pcp.runAgentTask",
+        "title": "PCP: Run Agent Task (verified)"
+      },
+      {
+        "command": "pcp.inlineEdit",
+        "title": "PCP: Inline Edit (verified)"
+      },
+      {
+        "command": "pcp.verifyDiffFile",
+        "title": "PCP: Verify .diff File(s) / Replay Repair Loop"
+      },
+      {
+        "command": "pcp.cancel",
+        "title": "PCP: Cancel Verification"
+      },
+      {
+        "command": "pcp.checkHealth",
+        "title": "PCP: Check Verifier Health"
+      },
+      {
+        "command": "pcp.showContext",
+        "title": "PCP: Show Assembled Context"
+      },
+      {
+        "command": "pcp.showResilience",
+        "title": "PCP: Model Resilience (break primary)"
+      },
+      {
+        "command": "pcp.showAuditLog",
+        "title": "PCP: Show Tool Audit Log"
+      },
+      {
+        "command": "pcp.copyMcpUrl",
+        "title": "PCP: Copy MCP Server URL (for TrueForge)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "pcp.inlineEdit",
+          "when": "editorHasSelection",
+          "group": "pcp@1"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "pcp.inlineEdit",
+        "key": "ctrl+alt+k",
+        "mac": "cmd+alt+k",
+        "when": "editorHasSelection"
+      }
+    ],
+    "configuration": {
+      "title": "Proof-Carrying Patch",
+      "properties": {
+        "pcp.verifierUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:8765",
+          "description": "Base URL of the PCP verifier (Person 1's server, or the mock server)."
+        },
+        "pcp.repoRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Repository the agent edits and the verifier tests (absolute path). Empty = the workspace folder."
+        },
+        "pcp.requestTimeoutMs": {
+          "type": "number",
+          "default": 15000,
+          "description": "Timeout for each verifier HTTP call (not the SSE stream)."
+        },
+        "pcp.verdictTimeoutMs": {
+          "type": "number",
+          "default": 600000,
+          "description": "Give up waiting for a verdict after this long."
+        },
+        "pcp.mcpPort": {
+          "type": "number",
+          "default": 8766,
+          "description": "Port for the editor MCP server (streamable HTTP on 127.0.0.1)."
+        },
+        "pcp.agentBackend": {
+          "type": "string",
+          "enum": [
+            "trueforge",
+            "gateway",
+            "scripted"
+          ],
+          "default": "trueforge",
+          "description": "trueforge: TrueForge agent harness. gateway: the verifier's /llm/complete with failover. scripted: replay .diff files (demo/tests)."
+        },
+        "pcp.trueforge.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:8790"
+        },
+        "pcp.trueforge.model": {
+          "type": "string",
+          "default": "",
+          "description": "provider/model as configured in TrueForge Settings > Models, e.g. openai/gpt-5.2."
+        },
+        "pcp.trueforge.mcpServerName": {
+          "type": "string",
+          "default": "pcp-editor",
+          "description": "Name of this extension's MCP server as registered in TrueForge Settings > Connectors."
+        },
+        "pcp.scriptedDiffs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "For the scripted backend: one .diff path per attempt (workspace-relative)."
+        },
+        "pcp.allowList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "pytest",
+            "git diff"
+          ],
+          "description": "Command prefixes that tier-2 tools may run without asking."
+        },
+        "pcp.maxAttempts": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 3
+        },
+        "pcp.contextTokenBudget": {
+          "type": "number",
+          "default": 8000
+        },
+        "pcp.demoTasksDir": {
+          "type": "string",
+          "default": "",
+          "description": "The verifier's bench/tasks folder (A/, B/ with task.json and .diff files) for PCP: Demo\u2026"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "tsc --noEmit -p . && eslint .",
+    "test": "vitest run",
+    "mock": "node esbuild.mjs && node out/mock-server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@truefoundry/trueforge-sdk": "0.185.0",
+    "ajv": "^8.20.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.19.0",
+    "@types/vscode": "~1.95.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.15.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^3.2.7"
+  }
+}
