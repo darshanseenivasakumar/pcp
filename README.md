@@ -69,3 +69,14 @@ A failing primary (HTTP 503) is retried once (300 ms backoff) and then the backu
 **Tests:** `cd extension && npm run lint && npm test`, which runs 132 tests with no verifier needed (mock server + temp git repos): hunk parsing, accept-only-that-hunk / reject-writes-nothing via `git status`, cancel leaves `git status` clean, repair loop stops at 3, tier ≥ 2 approval and allow-list, offline/timeout messages, SSE reconnect, TrueForge approval flow, MCP over HTTP. `PCP_REAL_URL=http://127.0.0.1:8765 npx vitest run test/real-server.test.ts` runs good/fixable/malicious/failover against the real verifier.
 
 **Write-up section and screenshots:** [`extension/docs/WRITEUP-editor.md`](extension/docs/WRITEUP-editor.md). **Demo script:** [`extension/docs/DEMO.md`](extension/docs/DEMO.md).
+
+## Integration check (AGENTS.md §9), 20 Nov 01:23
+
+Run on the merged tree (all P1 + P2 PRs), real verifier server, fake models.
+
+- [x] Extension talks to the real server: `PCP_REAL_URL=http://127.0.0.1:8765 npx vitest run test/real-server.test.ts` → 4/4 (health, SSE stream, verdict polling).
+- [x] Good → REVIEW, fixable → REPAIR → REVIEW (score rises), malicious → BLOCK on **tiny_repo** (extension client) and **Flask** over `curl`: A 100 · A 69 → 100 · A malicious BLOCK · B (4 files) 100.
+- [ ] Every seeded bug caught by its expected checker. `bench/seeded_bugs/` is still empty.
+- [x] No file changes without an accepted hunk (extension tests); cancel mid-run on Flask → BLOCK "cancelled", `git status` clean before and after.
+- [x] Primary broken (`/llm/simulate fail`) → backup answers in 311 ms; every attempt journaled.
+- [x] CI: Python 205 tests + ruff + schema check; extension lint + 132 tests + build.
