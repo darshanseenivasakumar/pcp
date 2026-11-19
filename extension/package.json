@@ -28,7 +28,7 @@
       },
       {
         "command": "pcp.verifyDiffFile",
-        "title": "PCP: Verify a .diff File"
+        "title": "PCP: Verify .diff File(s) / Replay Repair Loop"
       },
       {
         "command": "pcp.cancel",
@@ -39,12 +39,12 @@
         "title": "PCP: Check Verifier Health"
       },
       {
-        "command": "pcp.showAuditLog",
-        "title": "PCP: Show Tool Audit Log"
-      },
-      {
         "command": "pcp.showContext",
         "title": "PCP: Show Assembled Context"
+      },
+      {
+        "command": "pcp.showResilience",
+        "title": "PCP: Model Resilience (break primary)"
       }
     ],
     "menus": {
@@ -71,6 +71,11 @@
           "type": "string",
           "default": "http://127.0.0.1:8765",
           "description": "Base URL of the PCP verifier (Person 1's server, or the mock server)."
+        },
+        "pcp.repoRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Repository the agent edits and the verifier tests (absolute path). Empty = the workspace folder."
         },
         "pcp.requestTimeoutMs": {
           "type": "number",
