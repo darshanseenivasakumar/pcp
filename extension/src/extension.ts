@@ -1,10 +1,11 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import * as vscode from "vscode";
 
 import { VerifierClient } from "./api/client";
 import { GatewayBackend, ScriptedBackend } from "./agent/backends";
-import type { AgentBackend } from "./agent/loop";
+import type { AgentBackend, LoopResult } from "./agent/loop";
 import { TrueForgeBackend } from "./agent/trueforge";
 import type { ContextBundle, ContextRequest } from "./context/assemble";
 import { assembleContext, nodeRepoReader, renderContext } from "./context/assemble";
@@ -137,10 +138,13 @@ export interface VerifyDiffArgs {
   diffs: string[];
   task?: string;
   repoRoot?: string;
+  title?: string;
+  /** Demo playback only: hunks to accept automatically after a REVIEW verdict. */
+  autoAccept?: { hunks: string[]; delayMs: number };
 }
 
 /** Verify one .diff, or replay several as attempts 1..n of a repair loop (demo / bench diffs). */
-async function verifyDiffFiles(args?: VerifyDiffArgs): Promise<void> {
+async function verifyDiffFiles(args?: VerifyDiffArgs): Promise<LoopResult | undefined> {
   const root = args?.repoRoot ?? repoRoot(vscode.window.activeTextEditor?.document.uri);
   if (!root) return void vscode.window.showErrorMessage("Open the repository folder first.");
   const diffs: string[] = (args?.diffs ?? []).map((p) => readFileSync(p, "utf8"));
@@ -165,15 +169,94 @@ async function verifyDiffFiles(args?: VerifyDiffArgs): Promise<void> {
   task = args?.task ?? task;
   if (!args) task = await vscode.window.showInputBox({ title: "Task for this diff", value: task ?? "", ignoreFocusOut: true });
   if (!task || !(await ensureVerifier())) return;
-  await runVerified({
+  return runVerified({
     ...runOptions(task),
     mode: "diff",
-    title: diffs.length > 1 ? "PCP: Repair loop (replayed)" : "PCP: Verify diff",
+    title: args?.title ?? (diffs.length > 1 ? "PCP: Repair loop (replayed)" : "PCP: Verify diff"),
     task,
     repoRoot: root,
     backend: backend(diffs),
     context: "",
+    autoAccept: args?.autoAccept,
   });
+}
+
+/**
+ * PCP: Play Demo. Runs the recording script by itself: good patch -> REVIEW, malicious -> BLOCK,
+ * fixable -> REPAIR -> REVIEW with one hunk accepted, then the model failover. Uses the same
+ * commands and panels as a developer would; only the pacing and the one Accept click are scripted.
+ */
+async function playDemo(): Promise<void> {
+  const dir = cfg().get<string>("demoTasksDir", "").trim();
+  const root = repoRoot(vscode.window.activeTextEditor?.document.uri);
+  const pause = cfg().get<number>("demoPauseMs", 7000);
+  const a = (f: string) => join(dir, "A", f);
+  if (!dir || !root || !existsSync(a("reference.diff")) || !existsSync(a("fixable.diff")) || !existsSync(a("malicious.diff"))) {
+    void vscode.window.showErrorMessage("Set pcp.demoTasksDir to the verifier's bench/tasks folder and open the Flask repo.");
+    return;
+  }
+  if (!(await ensureVerifier())) return;
+
+  // The demo patches apply to pristine Flask; a previous take's accepted hunk would make them conflict.
+  const dirty = execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }).trim();
+  if (dirty) {
+    const ok = await vscode.window.showWarningMessage(
+      "Flask has local changes (probably the hunk accepted in an earlier take). Discard them so the demo patches apply?",
+      { modal: true, detail: dirty },
+      "Discard and continue",
+    );
+    if (ok !== "Discard and continue") return;
+    execFileSync("git", ["checkout", "--", "."], { cwd: root });
+  }
+
+  const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+  status.show();
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  try {
+    const started = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: "PCP demo", cancellable: true },
+      async (progress, token) => {
+        for (let s = 15; s > 0; s--) {
+          if (token.isCancellationRequested) return false;
+          progress.report({ message: `starts in ${s} s. Start your screen recording now.` });
+          await sleep(1000);
+        }
+        return true;
+      },
+    );
+    if (!started) return;
+    const task = (JSON.parse(readFileSync(a("task.json"), "utf8")) as { task: string }).task;
+    const step = (n: number, text: string) => {
+      status.text = `$(play) PCP demo ${n}/4: ${text}`;
+      void vscode.window.showInformationMessage(`Demo ${n}/4: ${text}`);
+    };
+
+    step(1, "Task A, a good patch");
+    await verifyDiffFiles({ diffs: [a("reference.diff")], task, repoRoot: root, title: "Demo 1: good patch" });
+    await sleep(pause);
+
+    step(2, "Task A, a patch that also plants an AWS key");
+    await verifyDiffFiles({ diffs: [a("malicious.diff")], task, repoRoot: root, title: "Demo 2: malicious patch" });
+    await sleep(pause);
+
+    step(3, "Task A, a wrong first try, repaired automatically; then accept one hunk");
+    await verifyDiffFiles({
+      diffs: [a("fixable.diff"), a("reference.diff")],
+      task,
+      repoRoot: root,
+      title: "Demo 3: repair loop",
+      autoAccept: { hunks: ["h1"], delayMs: pause },
+    });
+    await sleep(pause);
+
+    step(4, "Task C, break the primary model; the backup answers");
+    await ResiliencePanel.play(client, pause);
+    status.text = "$(check) PCP demo finished";
+    void vscode.window.showInformationMessage("PCP demo finished. Run `git diff` in Flask: only the accepted hunk h1 is on disk.");
+    await sleep(pause);
+  } finally {
+    status.dispose();
+  }
 }
 
 /** One-click demo scenarios over bench/tasks (pcp.demoTasksDir): no file dialogs on camera. */
@@ -189,7 +272,9 @@ async function demo(): Promise<void> {
   for (const [t, label] of [["A", "Task A (inline: get_debug_flag)"], ["B", "Task B (agent: flask config)"]] as const) {
     if (!existsSync(join(dir, t))) continue;
     const d = (f: string) => join(dir, t, f);
-    const replay = (files: string[]) => verifyDiffFiles({ diffs: files.map(d), task: taskOf(t), repoRoot: root });
+    const replay = async (files: string[]) => {
+      await verifyDiffFiles({ diffs: files.map(d), task: taskOf(t), repoRoot: root });
+    };
     if (existsSync(d("reference.diff"))) items.push({ label: `${label}: good patch`, description: "REVIEW", run: () => replay(["reference.diff"]) });
     if (existsSync(d("fixable.diff")) && existsSync(d("reference.diff"))) {
       items.push({ label: `${label}: fixable, then repaired`, description: "REPAIR -> REVIEW", run: () => replay(["fixable.diff", "reference.diff"]) });
@@ -241,12 +326,17 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("pcp.checkHealth", () => refresh(true)),
     vscode.commands.registerCommand("pcp.runAgentTask", guard(runAgentTask)),
     vscode.commands.registerCommand("pcp.inlineEdit", guard(inlineEdit)),
-    vscode.commands.registerCommand("pcp.verifyDiffFile", (args?: VerifyDiffArgs) => guard(() => verifyDiffFiles(args))()),
+    vscode.commands.registerCommand("pcp.verifyDiffFile", (args?: VerifyDiffArgs) =>
+      guard(async () => {
+        await verifyDiffFiles(args);
+      })(),
+    ),
     vscode.commands.registerCommand("pcp.cancel", () => {
       if (!cancelCurrent()) void vscode.window.showInformationMessage("PCP: nothing is running.");
     }),
     vscode.commands.registerCommand("pcp.showContext", guard(showContext)),
     vscode.commands.registerCommand("pcp.demo", guard(demo)),
+    vscode.commands.registerCommand("pcp.playDemo", guard(playDemo)),
     vscode.commands.registerCommand("pcp.showResilience", () => ResiliencePanel.show(client)),
     vscode.commands.registerCommand("pcp.showAuditLog", () => {
       if (!mcp) return void vscode.window.showWarningMessage("PCP: the MCP tool server is still starting.");

@@ -23,6 +23,10 @@
         "title": "PCP: Demo\u2026"
       },
       {
+        "command": "pcp.playDemo",
+        "title": "PCP: Play Demo (scripted recording)"
+      },
+      {
         "command": "pcp.runAgentTask",
         "title": "PCP: Run Agent Task (verified)"
       },
@@ -161,6 +165,11 @@
           "type": "string",
           "default": "",
           "description": "The verifier's bench/tasks folder (A/, B/ with task.json and .diff files) for PCP: Demo\u2026"
+        },
+        "pcp.demoPauseMs": {
+          "type": "number",
+          "default": 7000,
+          "description": "Pause between demo steps in PCP: Play Demo."
         }
       }
     }
