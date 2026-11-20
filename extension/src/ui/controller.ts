@@ -35,7 +35,11 @@ export interface RunOptions {
   /** Writes one accepted hunk; defaults to review.accept. The MCP layer routes it through write_file + audit. */
   writeHunk?: (active: ActiveReview, hunkId: string) => Promise<HunkWrite>;
   onActiveReview?: (active: ActiveReview | undefined) => void;
+  /** Demo playback only: after a REVIEW verdict, accept these hunks as if the developer clicked Accept. */
+  autoAccept?: { hunks: string[]; delayMs: number };
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 let current: AbortController | undefined;
 
@@ -170,6 +174,15 @@ export async function runVerified(o: RunOptions): Promise<LoopResult> {
   const say = { review: "info", blocked: "error", gave_up: "warn", cancelled: "info", failed: "error" }[result.status];
   const show = say === "error" ? vscode.window.showErrorMessage : say === "warn" ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
   void show(`PCP: ${result.message}`);
+
+  if (o.autoAccept && result.status === "review") {
+    for (const id of o.autoAccept.hunks) {
+      await sleep(o.autoAccept.delayMs);
+      if (panel.isDisposed) break;
+      addLog(state, `Demo: clicking Accept on ${id}`);
+      await accept(id);
+    }
+  }
   return result;
 }
 

@@ -62,6 +62,23 @@ export class ResiliencePanel {
     this.timer = setInterval(() => void this.poll(), 2000);
   }
 
+  /**
+   * Demo playback: break the primary model, send a test prompt (the backup answers), then restore
+   * the primary so the next take starts healthy. Same actions as the panel's buttons.
+   */
+  static async play(client: () => VerifierClient, pauseMs: number): Promise<void> {
+    const p = ResiliencePanel.show(client);
+    const wait = () => new Promise((r) => setTimeout(r, pauseMs));
+    await p.poll();
+    await wait();
+    await p.onMessage({ type: "simulate", mode: "fail" });
+    await wait();
+    await p.onMessage({ type: "probe" });
+    await wait();
+    await wait();
+    await p.onMessage({ type: "simulate", mode: "ok" });
+  }
+
   private async onMessage(m: { type: string; mode?: SimulateMode }): Promise<void> {
     if (m.type === "ready") return this.poll();
     if (m.type === "simulate" && m.mode) {
