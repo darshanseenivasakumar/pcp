@@ -80,3 +80,15 @@ Run on the merged tree (all P1 + P2 PRs), real verifier server, fake models.
 - [x] No file changes without an accepted hunk (extension tests); cancel mid-run on Flask → BLOCK "cancelled", `git status` clean before and after.
 - [x] Primary broken (`/llm/simulate fail`) → backup answers in 311 ms; every attempt journaled.
 - [x] CI: Python 205 tests + ruff + schema check; extension lint + 132 tests + build.
+
+## Team
+
+**CodersNextDoor**, TrueForge Forge-a-thon, Techfest 2026.
+
+| Member | GitHub |
+|---|---|
+| Darshan Seenivasakumar | [darshanseenivasakumar](https://github.com/darshanseenivasakumar) |
+| Arjhun V K | [vkarjhun](https://github.com/vkarjhun) |
+| Gururajan Giridharan | [guru-168](https://github.com/guru-168) |
+| Mitun S | [S-Mitun](https://github.com/S-Mitun) |
+| Dharanesh S | [Dharanesh25](https://github.com/Dharanesh25) |
