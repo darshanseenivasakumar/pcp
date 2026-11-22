@@ -10,7 +10,7 @@ Read [`AGENTS.md`](AGENTS.md) first: it is the team's master prompt and rules.
 python -m venv .venv
 .venv/Scripts/python -m pip install -e "./verifier[dev]"   # Windows; use .venv/bin/python elsewhere
 cp .env.example .env
-scripts/dev.sh            # or: powershell scripts/dev.ps1
+scripts/dev.sh            # or:powershell scripts/dev.ps1
 ```
 
 ## Layout
